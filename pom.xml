@@ -11,9 +11,11 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <dep.riak-client.version>2.0.3</dep.riak-client.version>
-        <dep.catalina.version>6.0.44</dep.catalina.version>
+        <dep.catalina.version>7.0.67</dep.catalina.version>
         <dep.junit.version>4.12</dep.junit.version>
         <dep.mockito.version>2.0.36-beta</dep.mockito.version>
+        <dep.logback.version>1.1.3</dep.logback.version>
+        <dep.slf4j.version>1.7.13</dep.slf4j.version>
     </properties>
     
     <dependencies>
@@ -24,9 +26,26 @@
         </dependency>
         <dependency>
             <groupId>org.apache.tomcat</groupId>
-            <artifactId>catalina</artifactId>
+            <artifactId>tomcat-catalina</artifactId>
             <version>${dep.catalina.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${dep.logback.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${dep.slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
+            <version>${dep.slf4j.version}</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
