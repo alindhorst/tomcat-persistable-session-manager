@@ -11,7 +11,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <dep.riak-client.version>2.0.3</dep.riak-client.version>
-        <dep.catalina.version>7.0.67</dep.catalina.version>
+        <dep.catalina.version>8.0.30</dep.catalina.version>
         <dep.junit.version>4.12</dep.junit.version>
         <dep.mockito.version>2.0.36-beta</dep.mockito.version>
         <dep.logback.version>1.1.3</dep.logback.version>
@@ -29,6 +29,11 @@
             <artifactId>tomcat-catalina</artifactId>
             <version>${dep.catalina.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tomcat</groupId>
+            <artifactId>tomcat-util</artifactId>
+            <version>${dep.catalina.version}</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>

@@ -22,7 +22,10 @@ public class RiakSessionManager extends ManagerBase {
     @Override
     protected StandardSession getNewSession() {
         LOGGER.debug("getNewSession");
-        return super.getNewSession(); //To change body of generated methods, choose Tools | Templates.
+        RiakSession session=new RiakSession(this);
+        session.setNew(true);
+        session.setValid(true);
+        return session;
     }
 
     @Override
