@@ -7,7 +7,8 @@ import org.apache.catalina.session.StandardSession;
  * @author alindhorst
  */
 public class RiakSession extends StandardSession {
-    private transient boolean dirty=false;
+
+    private transient boolean dirty = false;
 
     public RiakSession(Manager manager) {
         super(manager);
@@ -15,6 +16,16 @@ public class RiakSession extends StandardSession {
 
     public boolean isDirty() {
         return dirty;
+    }
+
+    public void setDirty(boolean dirty) {
+        this.dirty = dirty;
+    }
+
+    @Override
+    public void setAttribute(String name, Object value) {
+        setDirty(true);
+        super.setAttribute(name, value);
     }
 
 }
