@@ -24,8 +24,7 @@ public class RiakSession extends StandardSession {
 
     @Override
     public void setAttribute(String name, Object value) {
-        setDirty(true);
         super.setAttribute(name, value);
+        fireSessionEvent(name, value);
     }
-
 }
