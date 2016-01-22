@@ -15,6 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import static de.alexanderlindhorst.riak.session.manager.RiakSession.SESSION_ATTRIBUTE_SET;
+import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -46,15 +48,26 @@ public class RiakSessionTest {
     }
 
     @Test
-    public void setAttributeTriggersSessionEventTriggersPersisting() {
+    public void setAttributeTriggersSessionEventHandling() {
         String name = "key";
         Object value = "value";
         session.setAttribute(name, value);
         verify(sessionManager).sessionEvent(captor.capture());
         assertThat(captor.getValue(), is(not(nullValue())));
         assertThat(captor.getValue().getSession(), is(session));
-        assertThat(captor.getValue().getType(), is(name));
-        assertThat(captor.getValue().getData(), is(value));
+        assertThat(captor.getValue().getType(), is(SESSION_ATTRIBUTE_SET));
+        assertThat(captor.getValue().getData(), is(new PersistableSessionAttribute(name, value)));
+    }
+
+    @Test
+    public void sessionExpiredTriggersSessionEventHandling() {
+        SessionEvent event = new SessionEvent(session, SESSION_DESTROYED_EVENT, null);
+        session.expire();
+        verify(sessionManager).sessionEvent(captor.capture());
+        assertThat(captor.getValue(), is(not(nullValue())));
+        assertThat(captor.getValue().getSession(), is(session));
+        assertThat(captor.getValue().getType(), is(SESSION_DESTROYED_EVENT));
+        assertThat(captor.getValue().getData(), is(nullValue()));
     }
 
 }

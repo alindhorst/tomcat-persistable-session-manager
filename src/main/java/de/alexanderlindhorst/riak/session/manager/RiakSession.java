@@ -8,6 +8,7 @@ import org.apache.catalina.session.StandardSession;
  */
 public class RiakSession extends StandardSession {
 
+    public static final String SESSION_ATTRIBUTE_SET = "SESSION_ATTRIBUTE_SET";
     private transient boolean dirty = false;
 
     public RiakSession(Manager manager) {
@@ -25,6 +26,10 @@ public class RiakSession extends StandardSession {
     @Override
     public void setAttribute(String name, Object value) {
         super.setAttribute(name, value);
-        fireSessionEvent(name, value);
+        fireSessionAttributeSet(new PersistableSessionAttribute(name, value));
+    }
+
+    private void fireSessionAttributeSet(PersistableSessionAttribute sessionAttribute) {
+        fireSessionEvent(SESSION_ATTRIBUTE_SET, sessionAttribute);
     }
 }

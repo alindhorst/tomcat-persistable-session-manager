@@ -11,6 +11,7 @@ import org.apache.catalina.SessionEvent;
 import org.apache.catalina.SessionIdGenerator;
 import org.apache.catalina.session.StandardSession;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -19,6 +20,9 @@ import org.mockito.runners.MockitoJUnitRunner;
 
 import de.alexanderlindhorst.riak.session.access.RiakService;
 
+import static de.alexanderlindhorst.riak.session.manager.RiakSession.SESSION_ATTRIBUTE_SET;
+import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
+import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -94,10 +98,28 @@ public class RiakSessionManagerTest {
     }
 
     @Test
-    public void sessionEventLeadsToPersisting() {
+    public void sessionCreationEventLeadsToPersisting() {
         RiakSession session = new RiakSession(instance);
-        SessionEvent event = new SessionEvent(session, "anything", "something else");
+        SessionEvent event = new SessionEvent(session, SESSION_CREATED_EVENT, session);
         instance.sessionEvent(event);
         verify(riakService).persistSession(session);
+    }
+
+    @Test
+    public void sessionAttributeChangeEventLeadsToPersisting() {
+        RiakSession session = new RiakSession(instance);
+        SessionEvent event = new SessionEvent(session, SESSION_ATTRIBUTE_SET,
+                new PersistableSessionAttribute("key", "value"));
+        instance.sessionEvent(event);
+        verify(riakService).persistSession(session);
+    }
+
+    @Test
+    @Ignore
+    public void sessionExpirationEventLeadsToRemovalFromPersistence() {
+        RiakSession session = new RiakSession(instance);
+        SessionEvent event = new SessionEvent(session, SESSION_DESTROYED_EVENT, null);
+        instance.sessionEvent(event);
+        verify(riakService).deleteSession(session);
     }
 }
