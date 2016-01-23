@@ -2,6 +2,7 @@ package de.alexanderlindhorst.riak.session.manager;
 
 import java.io.IOException;
 
+import org.apache.catalina.LifecycleException;
 import org.apache.catalina.Session;
 import org.apache.catalina.SessionEvent;
 import org.apache.catalina.SessionListener;
@@ -26,6 +27,25 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("SessionManagement");
     private RiakService riakService;
+    private String riakServiceImplementationClassName;
+
+    public String getRiakServiceImplementationClassName() {
+        return riakServiceImplementationClassName;
+    }
+
+    public void setRiakServiceImplementationClassName(String riakServiceImplementationClassName) {
+        this.riakServiceImplementationClassName = riakServiceImplementationClassName;
+    }
+
+    @Override
+    protected void initInternal() throws LifecycleException {
+        super.initInternal();
+        try {
+            riakService = (RiakService) Class.forName(riakServiceImplementationClassName).newInstance();
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException ex) {
+            throw new LifecycleException(ex);
+        }
+    }
 
     @Override
     protected StandardSession getNewSession() {
@@ -54,6 +74,17 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
             session = (RiakSession) super.findSession(calculateJvmRouteAgnosticSessionId(id));
         } else {
             session = riakService.getSession(calculateJvmRouteAgnosticSessionId(id));
+            if (session != null) {
+                String oldId = session.getId();
+                String newId = session.getIdInternal();
+                if (contextJvmRoute != null) {
+                    newId = newId + "." + contextJvmRoute;
+                }
+                if (!oldId.equals(newId)) {
+                    session.setId(newId);
+                    session.tellChangedSessionId(newId, oldId, true, true);
+                }
+            }
         }
         return session;
     }
@@ -79,7 +110,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         RiakSession session = (RiakSession) event.getSession();
         switch (event.getType()) {
             case SESSION_DESTROYED_EVENT:
-                riakService.deleteSession(session);
+                remove(session);
                 break;
             case SESSION_CREATED_EVENT:
             case SESSION_ATTRIBUTE_SET:
@@ -89,6 +120,11 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
             default:
                 throw new AssertionError("Unknown event type: " + event.getType());
         }
+    }
 
+    @Override
+    public void remove(Session session) {
+        super.remove(session);
+        riakService.deleteSession((RiakSession) session);
     }
 }

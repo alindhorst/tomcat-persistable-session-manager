@@ -1,26 +1,38 @@
-
 package de.alexanderlindhorst.riak.session.access;
 
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import de.alexanderlindhorst.riak.session.manager.RiakSession;
+
+import static com.google.common.collect.Maps.newHashMap;
 
 /**
  * @author alindhorst
  */
-public class FakeRiakService implements RiakService{
+public class FakeRiakService extends RiakServiceBase {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("FakeRiakService");
+    private final Map<String, RiakSession> sessionStore = newHashMap();
 
     @Override
-    public void persistSession(RiakSession session) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    protected void persistSessionInternal(String sessionId, RiakSession session) {
+        sessionStore.put(session.getIdInternal(), session);
+        LOGGER.debug("Call to persistSessionInternal for session {}", sessionId);
     }
 
     @Override
-    public RiakSession getSession(String id) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    protected RiakSession getSessionInternal(String sessionId) {
+        LOGGER.debug("Call to getSessionInternal for id {}", sessionId);
+        return sessionStore.get(sessionId);
     }
 
     @Override
-    public void deleteSession(RiakSession session) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    protected void deleteSessionInternal(String sessionId) {
+        LOGGER.debug("Call to deleteSessionInternal for session id {}", sessionId);
+        sessionStore.remove(sessionId);
     }
 
 }
