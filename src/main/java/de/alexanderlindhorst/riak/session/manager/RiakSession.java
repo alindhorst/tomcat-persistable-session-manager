@@ -1,5 +1,8 @@
 package de.alexanderlindhorst.riak.session.manager;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
 
@@ -8,11 +11,17 @@ import org.apache.catalina.session.StandardSession;
  */
 public class RiakSession extends StandardSession {
 
+    private static final Pattern SESSION_ID_PATTERN = Pattern.compile("^(?<sessionId>[^\\.]+)(\\.(?<jvmRoute>.*))?$");
     public static final String SESSION_ATTRIBUTE_SET = "SESSION_ATTRIBUTE_SET";
     private transient boolean dirty = false;
 
     public RiakSession(Manager manager) {
         super(manager);
+    }
+
+    @Override
+    public String getIdInternal() {
+        return calculateJvmRouteAgnosticSessionId(getId());
     }
 
     public boolean isDirty() {
@@ -31,5 +40,17 @@ public class RiakSession extends StandardSession {
 
     private void fireSessionAttributeSet(PersistableSessionAttribute sessionAttribute) {
         fireSessionEvent(SESSION_ATTRIBUTE_SET, sessionAttribute);
+    }
+
+    public static String calculateJvmRouteAgnosticSessionId(String id) {
+        Matcher matcher = SESSION_ID_PATTERN.matcher(id);
+        matcher.find();
+        return matcher.group("sessionId");
+    }
+
+    public static String calculateJvmRoute(String id) {
+        Matcher matcher = SESSION_ID_PATTERN.matcher(id);
+        matcher.find();
+        return matcher.group("jvmRoute");
     }
 }

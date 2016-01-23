@@ -1,8 +1,6 @@
 package de.alexanderlindhorst.riak.session.manager;
 
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.catalina.Session;
 import org.apache.catalina.SessionEvent;
@@ -15,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import de.alexanderlindhorst.riak.session.access.RiakService;
 
 import static de.alexanderlindhorst.riak.session.manager.RiakSession.SESSION_ATTRIBUTE_SET;
+import static de.alexanderlindhorst.riak.session.manager.RiakSession.calculateJvmRoute;
+import static de.alexanderlindhorst.riak.session.manager.RiakSession.calculateJvmRouteAgnosticSessionId;
 import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 
@@ -24,7 +24,6 @@ import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
  */
 public class RiakSessionManager extends ManagerBase implements SessionListener {
 
-    private static final Pattern SESSION_ID_PATTERN = Pattern.compile("^(?<sessionId>[^\\.]+)(\\.(?<jvmRoute>.*))?$");
     private static final Logger LOGGER = LoggerFactory.getLogger("SessionManagement");
     private RiakService riakService;
 
@@ -48,13 +47,13 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
 
     @Override
     public Session findSession(String id) throws IOException {
-        String idJvmRoute = getJvmRoute(id);
+        String idJvmRoute = calculateJvmRoute(id);
         String contextJvmRoute = getJvmRoute();
         RiakSession session;
         if (idJvmRoute != null && idJvmRoute.equals(contextJvmRoute)) {
-            session = (RiakSession) super.findSession(getJvmRouteAgnosticSessionId(id));
+            session = (RiakSession) super.findSession(calculateJvmRouteAgnosticSessionId(id));
         } else {
-            session = riakService.getSession(getJvmRouteAgnosticSessionId(id));
+            session = riakService.getSession(calculateJvmRouteAgnosticSessionId(id));
         }
         return session;
     }
@@ -72,18 +71,6 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
 
     @Override
     public void unload() throws IOException {
-    }
-
-    private static String getJvmRouteAgnosticSessionId(String id) {
-        Matcher matcher = SESSION_ID_PATTERN.matcher(id);
-        matcher.find();
-        return matcher.group("sessionId");
-    }
-
-    private static String getJvmRoute(String id) {
-        Matcher matcher = SESSION_ID_PATTERN.matcher(id);
-        matcher.find();
-        return matcher.group("jvmRoute");
     }
 
     @Override

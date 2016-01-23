@@ -130,6 +130,11 @@ public class RiakSessionManagerTest {
         verify(riakService, never()).persistSession(session);
     }
 
+    @Test(expected = AssertionError.class)
+    public void unknownSessionEventTypeTriggersError() {
+        instance.sessionEvent(new SessionEvent(new RiakSession(instance), "no_such_event", null));
+    }
+
     @Test
     public void storeCallToCleanSessionWillNotPersistSession() {
         RiakSession session = new RiakSession(instance);
