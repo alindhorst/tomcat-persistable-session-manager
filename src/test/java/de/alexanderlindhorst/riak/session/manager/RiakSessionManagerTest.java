@@ -11,7 +11,6 @@ import org.apache.catalina.SessionEvent;
 import org.apache.catalina.SessionIdGenerator;
 import org.apache.catalina.session.StandardSession;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -94,7 +93,15 @@ public class RiakSessionManagerTest {
     public void findSessionRetrievesSessionForDifferingJVMRoute() throws IOException {
         String sessionId = "mySession.host2";
         instance.findSession(sessionId);
-        verify(riakService).getSession(sessionId);
+        //lookup of id needs to be w/o JVM route
+        verify(riakService).getSession("mySession");
+    }
+
+    @Test
+    public void findSessionRetrievesSessionFromPersistenceWithoutJVMRoute() throws IOException {
+        String sessionId = "mySession";
+        instance.findSession(sessionId);
+        verify(riakService).getSession("mySession");
     }
 
     @Test
@@ -115,11 +122,18 @@ public class RiakSessionManagerTest {
     }
 
     @Test
-    @Ignore
     public void sessionExpirationEventLeadsToRemovalFromPersistence() {
         RiakSession session = new RiakSession(instance);
         SessionEvent event = new SessionEvent(session, SESSION_DESTROYED_EVENT, null);
         instance.sessionEvent(event);
         verify(riakService).deleteSession(session);
+        verify(riakService, never()).persistSession(session);
+    }
+
+    @Test
+    public void storeCallToCleanSessionWillNotPersistSession() {
+        RiakSession session = new RiakSession(instance);
+        instance.storeSession(session);
+        verify(riakService, never()).persistSession(session);
     }
 }

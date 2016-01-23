@@ -14,6 +14,10 @@ import org.slf4j.LoggerFactory;
 
 import de.alexanderlindhorst.riak.session.access.RiakService;
 
+import static de.alexanderlindhorst.riak.session.manager.RiakSession.SESSION_ATTRIBUTE_SET;
+import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
+import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
+
 /**
  *
  * @author alindhorst
@@ -48,9 +52,9 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         String contextJvmRoute = getJvmRoute();
         RiakSession session;
         if (idJvmRoute != null && idJvmRoute.equals(contextJvmRoute)) {
-            session = (RiakSession) super.findSession(id);
+            session = (RiakSession) super.findSession(getJvmRouteAgnosticSessionId(id));
         } else {
-            session = riakService.getSession(id);
+            session = riakService.getSession(getJvmRouteAgnosticSessionId(id));
         }
         return session;
     }
@@ -72,25 +76,32 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
 
     private static String getJvmRouteAgnosticSessionId(String id) {
         Matcher matcher = SESSION_ID_PATTERN.matcher(id);
-        if (matcher.matches()) {
-            return matcher.group("sessionId");
-        }
-        return null;
+        matcher.find();
+        return matcher.group("sessionId");
     }
 
     private static String getJvmRoute(String id) {
         Matcher matcher = SESSION_ID_PATTERN.matcher(id);
-        if (matcher.matches()) {
-            return matcher.group("jvmRoute");
-        }
-        return null;
+        matcher.find();
+        return matcher.group("jvmRoute");
     }
 
     @Override
     public void sessionEvent(SessionEvent event) {
         LOGGER.debug("event {}", event);
         RiakSession session = (RiakSession) event.getSession();
-        session.setDirty(true);
-        riakService.persistSession(session);
+        switch (event.getType()) {
+            case SESSION_DESTROYED_EVENT:
+                riakService.deleteSession(session);
+                break;
+            case SESSION_CREATED_EVENT:
+            case SESSION_ATTRIBUTE_SET:
+                session.setDirty(true);
+                storeSession(session);
+                break;
+            default:
+                throw new AssertionError("Unknown event type: " + event.getType());
+        }
+
     }
 }
