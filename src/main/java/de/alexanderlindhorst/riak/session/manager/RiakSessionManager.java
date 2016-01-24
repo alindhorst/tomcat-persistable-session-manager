@@ -62,6 +62,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         RiakSession session = (RiakSession) super.createSession(sessionId);
         session.setDirty(true);
         riakService.persistSession(session);
+        session.addSessionListener(this);
         return session;
     }
 
@@ -75,6 +76,9 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         } else {
             session = riakService.getSession(calculateJvmRouteAgnosticSessionId(id));
             if (session != null) {
+                //reinitialize transient fields
+                session.setManager(this);
+                session.addSessionListener(this);
                 String oldId = session.getId();
                 String newId = session.getIdInternal();
                 if (contextJvmRoute != null) {

@@ -13,7 +13,6 @@ import org.apache.catalina.SessionIdGenerator;
 import org.apache.catalina.SessionListener;
 import org.apache.catalina.session.StandardSession;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -32,7 +31,6 @@ import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -155,7 +153,7 @@ public class RiakSessionManagerTest {
 
         instance.findSession(sessionId);
 
-        verify(sessionListener, never()).sessionEvent(any());
+        verify(sessionListener, never()).sessionEvent((SessionEvent) any());
         assertThat(session.getIdInternal(), is("mySession"));
         assertThat(session.getId(), is("mySession"));
     }
@@ -180,6 +178,7 @@ public class RiakSessionManagerTest {
     @Test
     public void sessionExpirationEventLeadsToRemovalFromPersistence() {
         RiakSession session = new RiakSession(instance);
+        session.setId("mysession");
         SessionEvent event = new SessionEvent(session, SESSION_DESTROYED_EVENT, null);
         instance.sessionEvent(event);
         verify(riakService).deleteSession(session);
@@ -222,11 +221,5 @@ public class RiakSessionManagerTest {
     public void externallySettableRiakServiceClassNameIsReadableInternally() {
         instance.setRiakServiceImplementationClassName("some.class");
         assertThat(instance.getRiakServiceImplementationClassName(), is("some.class"));
-    }
-
-    @Test
-    @Ignore
-    public void expireSessionRemovesSessionFromPersistence() {
-        fail("Not yet");
     }
 }
