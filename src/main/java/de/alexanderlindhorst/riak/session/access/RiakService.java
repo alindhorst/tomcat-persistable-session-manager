@@ -1,4 +1,6 @@
-
+/*
+ * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
+ */
 package de.alexanderlindhorst.riak.session.access;
 
 import de.alexanderlindhorst.riak.session.manager.RiakSession;
