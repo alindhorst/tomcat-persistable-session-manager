@@ -4,11 +4,13 @@
 package de.alexanderlindhorst.riak.session.manager;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.UUID;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Engine;
 import org.apache.catalina.LifecycleException;
+import org.apache.catalina.LifecycleState;
 import org.apache.catalina.Manager;
 import org.apache.catalina.Session;
 import org.apache.catalina.SessionEvent;
@@ -24,10 +26,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import de.alexanderlindhorst.riak.session.TestUtils.Parameter;
 import de.alexanderlindhorst.riak.session.access.FakeRiakService;
 import de.alexanderlindhorst.riak.session.access.RiakService;
 
 import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.riak.session.TestUtils.invokeMethod;
 import static de.alexanderlindhorst.riak.session.manager.RiakSession.SESSION_ATTRIBUTE_SET;
 import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
@@ -200,6 +204,21 @@ public class RiakSessionManagerTest {
         verify(riakService, never()).persistSession(session);
     }
 
+    @Test
+    public void storeCallToNullSessionWillSilentlyReturn() {
+        RiakSession session = null;
+        instance.storeSession(session);
+        verify(riakService, never()).persistSession(any(RiakSession.class));
+    }
+
+    @Test
+    public void storeCallToDirtySessionWillPersistSession() {
+        RiakSession session = new RiakSession(instance);
+        session.setDirty(true);
+        instance.storeSession(session);
+        verify(riakService).persistSession(session);
+    }
+
     @Test(expected = LifecycleException.class)
     public void missingRiakServiceImplementationMakesInitFail() throws LifecycleException {
         instance.init();
@@ -224,5 +243,49 @@ public class RiakSessionManagerTest {
     public void externallySettableRiakServiceClassNameIsReadableInternally() {
         instance.setRiakServiceImplementationClassName("some.class");
         assertThat(instance.getRiakServiceImplementationClassName(), is("some.class"));
+    }
+
+    @Test
+    public void startInternalWillSetStateFromStartingPrepToStarting() throws NoSuchMethodException,
+            IllegalAccessException, IllegalArgumentException, InvocationTargetException, LifecycleException {
+        invokeMethod(instance, "setStateInternal", new Parameter(LifecycleState.class, LifecycleState.STARTING_PREP),
+                new Parameter(Object.class, null), new Parameter(Boolean.TYPE, Boolean.FALSE));
+
+        instance.startInternal();
+
+        assertThat(instance.getState(), is(LifecycleState.STARTING));
+    }
+
+    @Test
+    public void startInternalWillNotChangeStateIfNotInStartingPrepState() throws NoSuchMethodException,
+            IllegalAccessException, IllegalArgumentException, InvocationTargetException, LifecycleException {
+        invokeMethod(instance, "setStateInternal", new Parameter(LifecycleState.class, LifecycleState.INITIALIZED),
+                new Parameter(Object.class, null), new Parameter(Boolean.TYPE, Boolean.FALSE));
+
+        instance.startInternal();
+
+        assertThat(instance.getState(), is(LifecycleState.INITIALIZED));
+    }
+
+    @Test
+    public void stopInternalWillSetStateFromStoppingPrepToStopping() throws NoSuchMethodException,
+            IllegalAccessException, IllegalArgumentException, InvocationTargetException, LifecycleException {
+        invokeMethod(instance, "setStateInternal", new Parameter(LifecycleState.class, LifecycleState.STOPPING_PREP),
+                new Parameter(Object.class, null), new Parameter(Boolean.TYPE, Boolean.FALSE));
+
+        instance.stopInternal();
+
+        assertThat(instance.getState(), is(LifecycleState.STOPPING));
+    }
+
+    @Test
+    public void stopInternalWillNotChangeStateIfNotInStoppingPrepState() throws NoSuchMethodException,
+            IllegalAccessException, IllegalArgumentException, InvocationTargetException, LifecycleException {
+        invokeMethod(instance, "setStateInternal", new Parameter(LifecycleState.class, LifecycleState.STOPPED),
+                new Parameter(Object.class, null), new Parameter(Boolean.TYPE, Boolean.FALSE));
+
+        instance.stopInternal();
+
+        assertThat(instance.getState(), is(LifecycleState.STOPPED));
     }
 }

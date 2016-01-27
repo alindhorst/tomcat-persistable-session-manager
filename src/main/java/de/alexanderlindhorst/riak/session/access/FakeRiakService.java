@@ -22,8 +22,9 @@ public class FakeRiakService extends RiakServiceBase {
 
     @Override
     protected void persistSessionInternal(String sessionId, RiakSession session) {
-        sessionStore.put(session.getIdInternal(), session);
         LOGGER.debug("Call to persistSessionInternal for session {}", sessionId);
+        sessionStore.put(session.getIdInternal(), session);
+        session.setDirty(false);
     }
 
     @Override

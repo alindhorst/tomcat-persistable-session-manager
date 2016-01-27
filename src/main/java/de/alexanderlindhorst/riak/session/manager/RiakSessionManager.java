@@ -6,6 +6,7 @@ package de.alexanderlindhorst.riak.session.manager;
 import java.io.IOException;
 
 import org.apache.catalina.LifecycleException;
+import org.apache.catalina.LifecycleState;
 import org.apache.catalina.Session;
 import org.apache.catalina.SessionEvent;
 import org.apache.catalina.SessionListener;
@@ -42,6 +43,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
 
     @Override
     protected void initInternal() throws LifecycleException {
+        LOGGER.debug("initInternal called");
         super.initInternal();
         try {
             riakService = (RiakService) Class.forName(riakServiceImplementationClassName).newInstance();
@@ -71,17 +73,21 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
 
     @Override
     public Session findSession(String id) throws IOException {
+        LOGGER.debug("findSession #{}", id);
         String idJvmRoute = calculateJvmRoute(id);
         String contextJvmRoute = getJvmRoute();
         RiakSession session;
         if (idJvmRoute != null && idJvmRoute.equals(contextJvmRoute)) {
+            LOGGER.debug("session id has current jvm route, fetching from local storage");
             session = (RiakSession) super.findSession(calculateJvmRouteAgnosticSessionId(id));
         } else {
+            LOGGER.debug("session {} has no or not current jvm route, fetching from service", id);
             session = riakService.getSession(calculateJvmRouteAgnosticSessionId(id));
             if (session != null) {
+                LOGGER.debug("session found, setting flags");
                 //reinitialize transient fields
                 session.setManager(this);
-                session.addSessionListener(this);
+                addSessionListenerUniquelyTo(session);
                 String oldId = session.getId();
                 String newId = session.getIdInternal();
                 if (contextJvmRoute != null) {
@@ -96,10 +102,20 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         return session;
     }
 
+    private void addSessionListenerUniquelyTo(RiakSession session) {
+        //remove if added previously
+        session.removeSessionListener(this);
+        //and add again
+        session.addSessionListener(this);
+    }
+
     public void storeSession(RiakSession session) {
-        if (!session.isDirty()) {
+        LOGGER.debug("storeSession called for id {}", session != null ? session.getId() : "[session is null]");
+        if (session == null || !session.isDirty()) {
+            LOGGER.debug("no persisting needed, will return");
             return;
         }
+        LOGGER.debug("storing session");
         riakService.persistSession(session);
     }
 
@@ -134,4 +150,26 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         super.remove(session);
         riakService.deleteSession((RiakSession) session);
     }
+
+    /* Life cycle stuff */
+    @Override
+    protected void startInternal() throws LifecycleException {
+        LOGGER.debug("startInternal");
+        super.startInternal();
+        LifecycleState state = getState();
+        if (LifecycleState.STARTING_PREP.equals(state)) {
+            setState(LifecycleState.STARTING);
+        }
+    }
+
+    @Override
+    protected void stopInternal() throws LifecycleException {
+        LOGGER.debug("stopInternal");
+        super.stopInternal();
+        LifecycleState state = getState();
+        if (LifecycleState.STOPPING_PREP.equals(state)) {
+            setState(LifecycleState.STOPPING);
+        }
+    }
+
 }

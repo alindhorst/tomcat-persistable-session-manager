@@ -95,6 +95,15 @@ public class FakeRiakServiceTest {
     }
 
     @Test
+    public void persistSessionResetsDirtyFlag() {
+        RiakSession session = new RiakSession(manager);
+        session.setId("session");
+        session.setDirty(true);
+        instance.persistSession(session);
+        assertThat(session.isDirty(), is(false));
+    }
+
+    @Test
     public void getSessionRetrievesSessionFromStorage() {
         RiakSession session = new RiakSession(manager);
         String sessionId = "session";
