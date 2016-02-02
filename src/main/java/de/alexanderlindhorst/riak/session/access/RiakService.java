@@ -12,4 +12,6 @@ public interface RiakService {
     public void persistSession(RiakSession session);
     public RiakSession getSession(String id);
     public void deleteSession(RiakSession session);
+    public void setBackendAddress(String backendAddress);
+    public void init();
 }

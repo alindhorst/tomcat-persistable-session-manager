@@ -31,14 +31,23 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("SessionManagement");
     private RiakService riakService;
-    private String riakServiceImplementationClassName;
+    private String serviceImplementationClassName;
+    private String serviceBackendAddress;
 
-    public String getRiakServiceImplementationClassName() {
-        return riakServiceImplementationClassName;
+    public String getServiceImplementationClassName() {
+        return serviceImplementationClassName;
     }
 
-    public void setRiakServiceImplementationClassName(String riakServiceImplementationClassName) {
-        this.riakServiceImplementationClassName = riakServiceImplementationClassName;
+    public void setServiceImplementationClassName(String riakServiceImplementationClassName) {
+        this.serviceImplementationClassName = riakServiceImplementationClassName;
+    }
+
+    public String getServiceBackendAddress() {
+        return serviceBackendAddress;
+    }
+
+    public void setServiceBackendAddress(String serviceBackendAddress) {
+        this.serviceBackendAddress = serviceBackendAddress;
     }
 
     @Override
@@ -46,7 +55,9 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         LOGGER.debug("initInternal called");
         super.initInternal();
         try {
-            riakService = (RiakService) Class.forName(riakServiceImplementationClassName).newInstance();
+            riakService = (RiakService) Class.forName(serviceImplementationClassName).newInstance();
+            riakService.setBackendAddress(serviceBackendAddress);
+            riakService.init();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException ex) {
             throw new LifecycleException(ex);
         }

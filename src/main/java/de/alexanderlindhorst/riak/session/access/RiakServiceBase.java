@@ -16,6 +16,7 @@ import static de.alexanderlindhorst.riak.session.manager.RiakSession.calculateJv
 abstract class RiakServiceBase implements RiakService {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger("RiakService");
+    private String backendAddress;
 
     @Override
     public final void persistSession(RiakSession session) {
@@ -37,4 +38,13 @@ abstract class RiakServiceBase implements RiakService {
     }
 
     protected abstract void deleteSessionInternal(String sessionId);
+
+    @Override
+    public final void setBackendAddress(String backendAddress) {
+        this.backendAddress = backendAddress;
+    }
+
+    public final String getBackendAddress() {
+        return backendAddress;
+    }
 }

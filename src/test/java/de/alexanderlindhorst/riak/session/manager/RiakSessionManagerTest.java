@@ -220,29 +220,37 @@ public class RiakSessionManagerTest {
     }
 
     @Test(expected = LifecycleException.class)
-    public void missingRiakServiceImplementationMakesInitFail() throws LifecycleException {
+    public void missingServiceImplementationMakesInitFail() throws LifecycleException {
         instance.init();
     }
 
     @Test(expected = LifecycleException.class)
-    public void unknownRiakServiceImplementationMakesInitFail() throws LifecycleException {
-        instance.setRiakServiceImplementationClassName("no.such.class");
+    public void unknownServiceImplementationMakesInitFail() throws LifecycleException {
+        instance.setServiceImplementationClassName("no.such.class");
         instance.init();
     }
 
     @Test
-    public void knownRiakServiceImplementationMakesInitSucceed() throws LifecycleException, NoSuchFieldException,
+    public void knownServiceImplementationMakesInitSucceed() throws LifecycleException, NoSuchFieldException,
             IllegalArgumentException, IllegalAccessException {
-        instance.setRiakServiceImplementationClassName(FakeRiakService.class.getName());
+        instance.setServiceImplementationClassName(FakeRiakService.class.getName());
         instance.init();
         assertThat(getFieldValueFromObject(instance, "riakService").getClass().getName(), is(
                 FakeRiakService.class.getName()));
     }
 
     @Test
-    public void externallySettableRiakServiceClassNameIsReadableInternally() {
-        instance.setRiakServiceImplementationClassName("some.class");
-        assertThat(instance.getRiakServiceImplementationClassName(), is("some.class"));
+    public void externallySettableServiceClassNameIsReadableInternally() {
+        String value = "some.class";
+        instance.setServiceImplementationClassName(value);
+        assertThat(instance.getServiceImplementationClassName(), is(value));
+    }
+
+    @Test
+    public void externallySettableServiceBackendAddressIsReadableInternally() {
+        String value = "address";
+        instance.setServiceBackendAddress(value);
+        assertThat(instance.getServiceBackendAddress(), is(value));
     }
 
     @Test

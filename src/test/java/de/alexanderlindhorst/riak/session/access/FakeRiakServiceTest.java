@@ -126,4 +126,9 @@ public class FakeRiakServiceTest {
         assertThat(map.values().isEmpty(), is(true));
         assertThat(map.keySet().isEmpty(), is(true));
     }
+
+    @Test
+    public void initDoesNotThrowException() {
+        instance.init();
+    }
 }

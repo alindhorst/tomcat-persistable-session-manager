@@ -39,4 +39,9 @@ public class FakeRiakService extends RiakServiceBase {
         sessionStore.remove(sessionId);
     }
 
+    @Override
+    public void init() {
+        LOGGER.debug("init");
+    }
+
 }
