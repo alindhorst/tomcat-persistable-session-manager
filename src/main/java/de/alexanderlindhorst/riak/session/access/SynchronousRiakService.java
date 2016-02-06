@@ -3,14 +3,26 @@
  */
 package de.alexanderlindhorst.riak.session.access;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.UnknownHostException;
+import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.commands.kv.FetchValue;
+import com.basho.riak.client.api.commands.kv.StoreValue;
+import com.basho.riak.client.core.RiakCluster;
 import com.basho.riak.client.core.RiakNode;
+import com.basho.riak.client.core.query.Location;
+import com.basho.riak.client.core.query.Namespace;
+import com.basho.riak.client.core.query.RiakObject;
+import com.basho.riak.client.core.util.BinaryValue;
 
 import de.alexanderlindhorst.riak.session.manager.RiakSession;
 
@@ -20,28 +32,53 @@ import static com.google.common.base.Strings.isNullOrEmpty;
  * @author alindhorst
  */
 public class SynchronousRiakService extends RiakServiceBase {
-
+    
     private static final Logger LOGGER = LoggerFactory.getLogger(SynchronousRiakService.class);
-    private RiakNode node;
-
+    private static final Namespace SESSIONS = new Namespace("SESSIONS");
+    private RiakCluster cluster;
+    
     @Override
     protected void persistSessionInternal(String sessionId, RiakSession session) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        LOGGER.debug("persistSessionInternal {}", sessionId);
+        try {
+            RiakClient client = new RiakClient(cluster);
+            RiakObject object = new RiakObject().setValue(BinaryValue.create(serializeSession(session)));
+            Location location = new Location(SESSIONS, sessionId);
+            StoreValue storeOp = new StoreValue.Builder(object)
+                    .withLocation(location)
+                    .build();
+            StoreValue.Response response = client.execute(storeOp);
+            LOGGER.debug("persistSessionInternal - Response: {}", response);
+        } catch (ExecutionException | InterruptedException exception) {
+            throw new RiakAccessException("Couldn't persist session", exception);
+        }
     }
-
+    
     @Override
     protected RiakSession getSessionInternal(String sessionId) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        try {
+            LOGGER.debug("getSessionInternal {}", sessionId);
+            RiakClient client = new RiakClient(cluster);
+            Location location = new Location(SESSIONS, sessionId);
+            FetchValue fetchValue = new FetchValue.Builder(location).build();
+            client.execute(fetchValue).getValue(RiakObject.class).getValue().getValue();
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        } catch (ExecutionException | InterruptedException ex) {
+            throw new RiakAccessException("Couldn't fetch session " + sessionId, ex);
+        }
     }
-
+    
     @Override
     protected void deleteSessionInternal(String sessionId) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-
+    
     @Override
     public void init() {
-        Pattern addressPattern = Pattern.compile("^(?<host>[^:]+)(:(?<port>.+))?");
+        if (isNullOrEmpty(getBackendAddress())) {
+            throw new IllegalArgumentException("backend address must not be null or empty");
+        }
+        Pattern addressPattern = Pattern.compile("^(?<host>[^:]+)(:(?<port>\\d+))?");
         Matcher matcher = addressPattern.matcher(getBackendAddress());
         if (!matcher.matches()) {
             throw new IllegalArgumentException("backend address value " + getBackendAddress() + " cannot be read");
@@ -53,12 +90,30 @@ public class SynchronousRiakService extends RiakServiceBase {
             port = Integer.valueOf(portValue);
         }
         try {
-            node = new RiakNode.Builder()
+            RiakNode node = new RiakNode.Builder()
                     .withRemoteAddress(host)
                     .withRemotePort(port)
                     .build();
+            cluster = new RiakCluster.Builder(node)
+                    .build();
+            cluster.start();
         } catch (UnknownHostException ex) {
             throw new IllegalStateException("Couldn't configure riak access", ex);
         }
+    }
+    
+    private static byte[] serializeSession(RiakSession session) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream stream = new ObjectOutputStream(out);
+            session.writeObjectData(stream);
+            stream.flush();
+            byte[] bytes = out.toByteArray();
+            out.close();
+            return bytes;
+        } catch (IOException iOException) {
+            LOGGER.error("Couldn't serialize session, will return null value", iOException);
+        }
+        return null;
     }
 }
