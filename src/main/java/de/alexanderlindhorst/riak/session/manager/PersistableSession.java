@@ -12,13 +12,13 @@ import org.apache.catalina.session.StandardSession;
 /**
  * @author alindhorst
  */
-public class RiakSession extends StandardSession {
+public class PersistableSession extends StandardSession {
 
     private static final Pattern SESSION_ID_PATTERN = Pattern.compile("^(?<sessionId>[^\\.]+)(\\.(?<jvmRoute>.*))?$");
     public static final String SESSION_ATTRIBUTE_SET = "SESSION_ATTRIBUTE_SET";
     private transient boolean dirty = false;
 
-    public RiakSession(Manager manager) {
+    public PersistableSession(Manager manager) {
         super(manager);
     }
 

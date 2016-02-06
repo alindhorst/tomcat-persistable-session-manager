@@ -3,9 +3,11 @@
  */
 package de.alexanderlindhorst.riak.session.access;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.catalina.Context;
+import org.apache.juli.logging.Log;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -13,10 +15,11 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import de.alexanderlindhorst.riak.session.TestUtils;
-import de.alexanderlindhorst.riak.session.manager.RiakSession;
+import de.alexanderlindhorst.riak.session.manager.PersistableSession;
 import de.alexanderlindhorst.riak.session.manager.RiakSessionManager;
 
 import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.riak.session.manager.PersistableSessionUtils.serializeSession;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
@@ -31,6 +34,8 @@ public class FakeRiakServiceTest {
     private RiakSessionManager manager;
     @Mock
     private Context context;
+    @Mock
+    private Log logger;
     private FakeRiakService instance;
 
     @Before
@@ -38,6 +43,8 @@ public class FakeRiakServiceTest {
         instance = new FakeRiakService();
         when(manager.getContext()).thenReturn(context);
         when(context.getApplicationLifecycleListeners()).thenReturn(new Object[0]);
+        when(context.getLogger()).thenReturn(logger);
+        when(logger.isDebugEnabled()).thenReturn(Boolean.FALSE);
         when(manager.getJvmRoute()).thenReturn(jvmRoute);
     }
     private final String jvmRoute = "myhost-1";
@@ -45,58 +52,59 @@ public class FakeRiakServiceTest {
     @Test
     public void persistSessionStoresSessionInternallyUnderIDWithoutJVMRoute() throws NoSuchFieldException,
             IllegalArgumentException, IllegalAccessException {
-        RiakSession session = new RiakSession(manager);
+        PersistableSession session = new PersistableSession(manager);
         String sessionId = "testSession";
         session.setId(sessionId);
         instance.persistSession(session);
         @SuppressWarnings("unchecked")
-        Map<String, RiakSession> map = (Map<String, RiakSession>) TestUtils.getFieldValueFromObject(instance,
+        Map<String, PersistableSession> map = (Map<String, PersistableSession>) TestUtils.getFieldValueFromObject(
+                instance,
                 "sessionStore");
         assertThat(map.values().size(), is(1));
         assertThat(map.keySet().size(), is(1));
         assertThat(map.keySet().contains(sessionId), is(true));
-        assertThat(map.values().contains(session), is(true));
     }
 
     @Test
     public void persistSessionStoresSessionInternallyUnderInternalIdWithJVMRoute() throws NoSuchFieldException,
             IllegalArgumentException, IllegalAccessException {
-        RiakSession session = new RiakSession(manager);
+        PersistableSession session = new PersistableSession(manager);
         String sessionId = "testSession";
         session.setId(sessionId + "." + jvmRoute);
         instance.persistSession(session);
         @SuppressWarnings("unchecked")
-        Map<String, RiakSession> map = (Map<String, RiakSession>) TestUtils.getFieldValueFromObject(instance,
+        Map<String, PersistableSession> map = (Map<String, PersistableSession>) TestUtils.getFieldValueFromObject(
+                instance,
                 "sessionStore");
         assertThat(map.values().size(), is(1));
         assertThat(map.keySet().size(), is(1));
         assertThat(map.keySet().contains(sessionId), is(true));
-        assertThat(map.values().contains(session), is(true));
     }
 
     @Test
     public void persistSessionOverwritesExistingValueWithNewerValue() throws NoSuchFieldException,
             IllegalArgumentException, IllegalAccessException {
-        RiakSession session1 = new RiakSession(manager);
+        PersistableSession session1 = new PersistableSession(manager);
         session1.setId("session.host1");
-        RiakSession session2 = new RiakSession(manager);
+        PersistableSession session2 = new PersistableSession(manager);
         session2.setId("session.host2");
+        byte[] serialized = serializeSession(session2);
         //simulate creation from first hosts
         instance.persistSession(session1);
         //and then updates on other host
         instance.persistSession(session2);
         @SuppressWarnings("unchecked")
-        Map<String, RiakSession> map = (Map<String, RiakSession>) TestUtils.getFieldValueFromObject(instance,
+        Map<String, byte[]> map = (Map<String, byte[]>) TestUtils.getFieldValueFromObject(instance,
                 "sessionStore");
         assertThat(map.values().size(), is(1));
         assertThat(map.keySet().size(), is(1));
         assertThat(map.keySet().contains("session"), is(true));
-        assertThat(map.values().contains(session2), is(true));
+        assertThat(Arrays.equals(map.get("session"), serialized), is(true));
     }
 
     @Test
     public void persistSessionResetsDirtyFlag() {
-        RiakSession session = new RiakSession(manager);
+        PersistableSession session = new PersistableSession(manager);
         session.setId("session");
         session.setDirty(true);
         instance.persistSession(session);
@@ -105,24 +113,26 @@ public class FakeRiakServiceTest {
 
     @Test
     public void getSessionRetrievesSessionFromStorage() {
-        RiakSession session = new RiakSession(manager);
+        PersistableSession session = new PersistableSession(manager);
+        PersistableSession deserialized = new PersistableSession(manager);
         String sessionId = "session";
         session.setId(sessionId);
         instance.persistSession(session);
-        assertThat(instance.getSession(sessionId), is(session));
+        assertThat(instance.getSession(deserialized, sessionId).getId(), is(session.getId()));
     }
 
     @Test
     public void deleteSessionRemovesSessionFromPersistenceLayer() throws NoSuchFieldException, IllegalArgumentException,
             IllegalAccessException {
-        RiakSession session = new RiakSession(manager);
+        PersistableSession session = new PersistableSession(manager);
         String sessionId = "session";
         session.setId(sessionId);
         instance.persistSession(session);
 
         instance.deleteSession(session);
         @SuppressWarnings("unchecked")
-        Map<String, RiakSession> map = (Map<String, RiakSession>) getFieldValueFromObject(instance, "sessionStore");
+        Map<String, PersistableSession> map = (Map<String, PersistableSession>) getFieldValueFromObject(instance,
+                "sessionStore");
         assertThat(map.values().isEmpty(), is(true));
         assertThat(map.keySet().isEmpty(), is(true));
     }

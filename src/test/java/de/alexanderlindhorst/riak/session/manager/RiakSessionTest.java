@@ -15,7 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import static de.alexanderlindhorst.riak.session.manager.RiakSession.SESSION_ATTRIBUTE_SET;
+import static de.alexanderlindhorst.riak.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -32,7 +32,7 @@ public class RiakSessionTest {
     @Mock
     private Context context;
     @InjectMocks
-    private RiakSession session;
+    private PersistableSession session;
     @Captor
     private ArgumentCaptor<SessionEvent> captor;
 

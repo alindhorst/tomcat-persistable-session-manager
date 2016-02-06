@@ -5,6 +5,7 @@ package de.alexanderlindhorst.riak.session.access;
 
 import java.util.concurrent.ExecutionException;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -17,10 +18,11 @@ import com.basho.riak.client.core.FutureOperation;
 import com.basho.riak.client.core.RiakCluster;
 import com.basho.riak.client.core.RiakFuture;
 import com.basho.riak.client.core.RiakNode;
+import com.basho.riak.client.core.operations.FetchOperation;
 import com.basho.riak.client.core.operations.StoreOperation;
 import com.basho.riak.client.core.query.Location;
 
-import de.alexanderlindhorst.riak.session.manager.RiakSession;
+import de.alexanderlindhorst.riak.session.manager.PersistableSession;
 
 import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
 import static org.hamcrest.CoreMatchers.is;
@@ -41,11 +43,12 @@ public class SynchronousRiakServiceTest {
     @Mock
     private RiakCluster cluster;
     @Mock
-    private RiakSession session;
+    private PersistableSession session;
     @InjectMocks
     private SynchronousRiakService service;
     @Captor
     private ArgumentCaptor<FutureOperation<?, ?, ?>> operationCaptor;
+    private final byte[] bytes = new byte[]{1};
 
     @Test(expected = IllegalArgumentException.class)
     public void initFailsWithNullBackendAddress() {
@@ -103,31 +106,56 @@ public class SynchronousRiakServiceTest {
     }
 
     @Test
-    public void persistInternalRunsStoreCommandOnCluster() throws InterruptedException, ExecutionException {
+    public void persistSessionInternalRunsStoreCommandOnCluster() throws InterruptedException, ExecutionException {
         @SuppressWarnings("unchecked")
-        RiakFuture<StoreOperation.Response, Location> coreFuture = mock(RiakFuture.class);
-        StoreOperation.Response response = mock(StoreOperation.Response.class);
+        RiakFuture<StoreOperation.Response, Location> coreFuture = mock(RiakFuture.class
+        );
+        StoreOperation.Response response = mock(StoreOperation.Response.class
+        );
         when(coreFuture.get()).thenReturn(response);
-        when(cluster.execute(any(StoreOperation.class))).thenReturn(coreFuture);
-        service.persistSessionInternal("sessionId", session);
+        when(cluster.execute(any(StoreOperation.class
+        ))).thenReturn(coreFuture);
+        service.persistSessionInternal("sessionId", bytes);
 
         verify(cluster).execute(operationCaptor.capture());
 
         FutureOperation<?, ?, ?> operation = operationCaptor.getValue();
-        assertThat(operation.getClass().getName(), is(StoreOperation.class.getName()));
+        assertThat(operation.getClass().getName(), is(StoreOperation.class
+                .getName()));
     }
 
     @Test(expected = RiakAccessException.class)
     @SuppressWarnings("unchecked")
     public void executionExceptionWhilePersistingThrowsRiakAccessException() {
-        when(cluster.execute(any(FutureOperation.class))).thenThrow(ExecutionException.class);
-        service.persistSessionInternal("any", session);
+        when(cluster.execute(any(FutureOperation.class
+        ))).thenThrow(ExecutionException.class
+        );
+        service.persistSessionInternal("any", bytes);
     }
 
     @Test(expected = RiakAccessException.class)
     @SuppressWarnings("unchecked")
     public void interruptedExceptionWhilePersistingThrowsRiakAccessException() {
-        when(cluster.execute(any(FutureOperation.class))).thenThrow(InterruptedException.class);
-        service.persistSessionInternal("any", session);
+        when(cluster.execute(any(FutureOperation.class
+        ))).thenThrow(InterruptedException.class
+        );
+        service.persistSessionInternal("any", bytes);
+    }
+
+    @Test
+    @Ignore
+    public void getSessionInternalRunsFetchCommandOnCluster() {
+        @SuppressWarnings("unchecked")
+        RiakFuture<FetchOperation.Response, Location> coreFuture = mock(RiakFuture.class
+        );
+        when(cluster.execute(any(FetchOperation.class
+        ))).thenReturn(coreFuture);
+        service.getSessionInternal("sessionId");
+
+        verify(cluster).execute(operationCaptor.capture());
+
+        FutureOperation<?, ?, ?> operation = operationCaptor.getValue();
+        assertThat(operation.getClass().getName(), is(FetchOperation.class
+                .getName()));
     }
 }

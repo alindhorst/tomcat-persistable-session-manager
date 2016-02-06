@@ -3,9 +3,6 @@
  */
 package de.alexanderlindhorst.riak.session.access;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.UnknownHostException;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
@@ -24,25 +21,25 @@ import com.basho.riak.client.core.query.Namespace;
 import com.basho.riak.client.core.query.RiakObject;
 import com.basho.riak.client.core.util.BinaryValue;
 
-import de.alexanderlindhorst.riak.session.manager.RiakSession;
+import de.alexanderlindhorst.riak.session.manager.BackendServiceBase;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 /**
  * @author alindhorst
  */
-public class SynchronousRiakService extends RiakServiceBase {
+public class SynchronousRiakService extends BackendServiceBase {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(SynchronousRiakService.class);
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
     private RiakCluster cluster;
-    
+
     @Override
-    protected void persistSessionInternal(String sessionId, RiakSession session) {
+    protected void persistSessionInternal(String sessionId, byte[] bytes) {
         LOGGER.debug("persistSessionInternal {}", sessionId);
         try {
             RiakClient client = new RiakClient(cluster);
-            RiakObject object = new RiakObject().setValue(BinaryValue.create(serializeSession(session)));
+            RiakObject object = new RiakObject().setValue(BinaryValue.create(bytes));
             Location location = new Location(SESSIONS, sessionId);
             StoreValue storeOp = new StoreValue.Builder(object)
                     .withLocation(location)
@@ -53,9 +50,9 @@ public class SynchronousRiakService extends RiakServiceBase {
             throw new RiakAccessException("Couldn't persist session", exception);
         }
     }
-    
+
     @Override
-    protected RiakSession getSessionInternal(String sessionId) {
+    protected byte[] getSessionInternal(String sessionId) {
         try {
             LOGGER.debug("getSessionInternal {}", sessionId);
             RiakClient client = new RiakClient(cluster);
@@ -100,20 +97,5 @@ public class SynchronousRiakService extends RiakServiceBase {
         } catch (UnknownHostException ex) {
             throw new IllegalStateException("Couldn't configure riak access", ex);
         }
-    }
-    
-    private static byte[] serializeSession(RiakSession session) {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ObjectOutputStream stream = new ObjectOutputStream(out);
-            session.writeObjectData(stream);
-            stream.flush();
-            byte[] bytes = out.toByteArray();
-            out.close();
-            return bytes;
-        } catch (IOException iOException) {
-            LOGGER.error("Couldn't serialize session, will return null value", iOException);
-        }
-        return null;
     }
 }

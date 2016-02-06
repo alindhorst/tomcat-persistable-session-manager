@@ -8,27 +8,26 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.alexanderlindhorst.riak.session.manager.RiakSession;
+import de.alexanderlindhorst.riak.session.manager.BackendServiceBase;
 
 import static com.google.common.collect.Maps.newHashMap;
 
 /**
  * @author alindhorst
  */
-public class FakeRiakService extends RiakServiceBase {
+public class FakeRiakService extends BackendServiceBase {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("FakeRiakService");
-    private final Map<String, RiakSession> sessionStore = newHashMap();
+    private final Map<String, byte[]> sessionStore = newHashMap();
 
     @Override
-    protected void persistSessionInternal(String sessionId, RiakSession session) {
+    protected void persistSessionInternal(String sessionId, byte[] bytes) {
         LOGGER.debug("Call to persistSessionInternal for session {}", sessionId);
-        sessionStore.put(session.getIdInternal(), session);
-        session.setDirty(false);
+        sessionStore.put(sessionId, bytes);
     }
 
     @Override
-    protected RiakSession getSessionInternal(String sessionId) {
+    protected byte[] getSessionInternal(String sessionId) {
         LOGGER.debug("Call to getSessionInternal for id {}", sessionId);
         return sessionStore.get(sessionId);
     }

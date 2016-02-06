@@ -28,17 +28,17 @@ import org.mockito.runners.MockitoJUnitRunner;
 
 import de.alexanderlindhorst.riak.session.TestUtils.Parameter;
 import de.alexanderlindhorst.riak.session.access.FakeRiakService;
-import de.alexanderlindhorst.riak.session.access.RiakService;
 
 import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
 import static de.alexanderlindhorst.riak.session.TestUtils.invokeMethod;
-import static de.alexanderlindhorst.riak.session.manager.RiakSession.SESSION_ATTRIBUTE_SET;
+import static de.alexanderlindhorst.riak.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
 import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -48,7 +48,7 @@ import static org.mockito.Mockito.when;
 public class RiakSessionManagerTest {
 
     @Mock
-    private RiakService riakService;
+    private BackendService riakService;
     @Mock
     private Context context;
     @Mock
@@ -78,20 +78,20 @@ public class RiakSessionManagerTest {
 
     @Test
     public void createSessionCreatesSessionWithId() {
-        RiakSession emptySession = (RiakSession) instance.createSession(null);
+        PersistableSession emptySession = (PersistableSession) instance.createSession(null);
         assertThat(emptySession.getId(), is(notNullValue()));
     }
 
     @Test
     public void createSessionWithGivenIdCreatesSessionWithIdHonored() {
         String sessionId = "mySessionId";
-        RiakSession emptySession = (RiakSession) instance.createSession(sessionId);
+        PersistableSession emptySession = (PersistableSession) instance.createSession(sessionId);
         assertThat(emptySession.getId(), is(sessionId));
     }
 
     @Test
     public void createSessionPersistsRiakSession() {
-        RiakSession newSession = (RiakSession) instance.createSession(null);
+        PersistableSession newSession = (PersistableSession) instance.createSession(null);
         verify(riakService).persistSession(newSession);
     }
 
@@ -99,14 +99,14 @@ public class RiakSessionManagerTest {
     public void findSessionRetrievesSessionFromServiceIfNoJVMRouteGiven() throws IOException {
         String sessionId = "mySession";
         Session found = instance.findSession(sessionId);
-        verify(riakService).getSession(sessionId);
+        verify(riakService).getSession(any(PersistableSession.class), eq(sessionId));
     }
 
     @Test
     public void findSessionDoesNotRetrieveSessionFromServiceIfSameJVMRoute() throws IOException {
         String sessionId = "mySession.host";
         instance.findSession(sessionId);
-        verify(riakService, never()).getSession(sessionId);
+        verify(riakService, never()).getSession(any(PersistableSession.class), eq(sessionId));
     }
 
     @Test
@@ -114,24 +114,24 @@ public class RiakSessionManagerTest {
         String sessionId = "mySession.host2";
         instance.findSession(sessionId);
         //lookup of id needs to be w/o JVM route
-        verify(riakService).getSession("mySession");
+        verify(riakService).getSession(any(PersistableSession.class), eq("mySession"));
     }
 
     @Test
     public void findSessionRetrievesSessionFromPersistenceWithoutJVMRoute() throws IOException {
         String sessionId = "mySession";
         instance.findSession(sessionId);
-        verify(riakService).getSession("mySession");
+        verify(riakService).getSession(any(PersistableSession.class), eq("mySession"));
     }
 
     @Test
     public void findSessionSignalsNewSessionWhenGoingToPersistenceAndDifferentJVMRoute() throws IOException {
         String sessionId = "mySession.host1"; //context gives "host" as jvmroute
-        RiakSession session = new RiakSession(instance);
+        PersistableSession session = new PersistableSession(instance);
         session.setId(sessionId);
         session.addSessionListener(sessionListener);
-        when(riakService.getSession(sessionId)).thenReturn(session);
-        when(riakService.getSession("mySession")).thenReturn(session);
+        when(riakService.getSession(any(PersistableSession.class), eq(sessionId))).thenReturn(session);
+        when(riakService.getSession(any(PersistableSession.class), eq("mySession"))).thenReturn(session);
         instance.findSession(sessionId);
 
         verify(sessionListener).sessionEvent(sessionEventCaptor.capture());
@@ -153,10 +153,10 @@ public class RiakSessionManagerTest {
         instance.setContext(context);
         instance.setSessionIdGenerator(sessionIdGenerator);
         String sessionId = "mySession"; //context gives "host" as jvmroute
-        RiakSession session = new RiakSession(instance);
+        PersistableSession session = new PersistableSession(instance);
         session.setId(sessionId);
         session.addSessionListener(sessionListener);
-        when(riakService.getSession(sessionId)).thenReturn(session);
+        when(riakService.getSession(any(PersistableSession.class), eq(sessionId))).thenReturn(session);
 
         instance.findSession(sessionId);
 
@@ -167,7 +167,7 @@ public class RiakSessionManagerTest {
 
     @Test
     public void sessionCreationEventLeadsToPersisting() {
-        RiakSession session = new RiakSession(instance);
+        PersistableSession session = new PersistableSession(instance);
         SessionEvent event = new SessionEvent(session, SESSION_CREATED_EVENT, session);
         instance.sessionEvent(event);
         verify(riakService).persistSession(session);
@@ -175,7 +175,7 @@ public class RiakSessionManagerTest {
 
     @Test
     public void sessionAttributeChangeEventLeadsToPersisting() {
-        RiakSession session = new RiakSession(instance);
+        PersistableSession session = new PersistableSession(instance);
         SessionEvent event = new SessionEvent(session, SESSION_ATTRIBUTE_SET,
                 new PersistableSessionAttribute("key", "value"));
         instance.sessionEvent(event);
@@ -184,7 +184,7 @@ public class RiakSessionManagerTest {
 
     @Test
     public void sessionExpirationEventLeadsToRemovalFromPersistence() {
-        RiakSession session = new RiakSession(instance);
+        PersistableSession session = new PersistableSession(instance);
         session.setId("mysession");
         SessionEvent event = new SessionEvent(session, SESSION_DESTROYED_EVENT, null);
         instance.sessionEvent(event);
@@ -194,26 +194,26 @@ public class RiakSessionManagerTest {
 
     @Test(expected = AssertionError.class)
     public void unknownSessionEventTypeTriggersError() {
-        instance.sessionEvent(new SessionEvent(new RiakSession(instance), "no_such_event", null));
+        instance.sessionEvent(new SessionEvent(new PersistableSession(instance), "no_such_event", null));
     }
 
     @Test
     public void storeCallToCleanSessionWillNotPersistSession() {
-        RiakSession session = new RiakSession(instance);
+        PersistableSession session = new PersistableSession(instance);
         instance.storeSession(session);
         verify(riakService, never()).persistSession(session);
     }
 
     @Test
     public void storeCallToNullSessionWillSilentlyReturn() {
-        RiakSession session = null;
+        PersistableSession session = null;
         instance.storeSession(session);
-        verify(riakService, never()).persistSession(any(RiakSession.class));
+        verify(riakService, never()).persistSession(any(PersistableSession.class));
     }
 
     @Test
     public void storeCallToDirtySessionWillPersistSession() {
-        RiakSession session = new RiakSession(instance);
+        PersistableSession session = new PersistableSession(instance);
         session.setDirty(true);
         instance.storeSession(session);
         verify(riakService).persistSession(session);
