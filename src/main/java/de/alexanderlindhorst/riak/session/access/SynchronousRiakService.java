@@ -65,7 +65,11 @@ public class SynchronousRiakService extends BackendServiceBase {
             LOGGER.debug("getSessionInternal {}", sessionId);
             Location location = new Location(SESSIONS, sessionId);
             FetchValue fetchValue = new FetchValue.Builder(location).build();
-            return client.execute(fetchValue).getValue(RiakObject.class).getValue().getValue();
+            RiakObject value = client.execute(fetchValue).getValue(RiakObject.class);
+            if (value == null) {
+                return null;
+            }
+            return value.getValue().getValue();
         } catch (ExecutionException | InterruptedException ex) {
             throw new RiakAccessException("Couldn't fetch session " + sessionId, ex);
         }

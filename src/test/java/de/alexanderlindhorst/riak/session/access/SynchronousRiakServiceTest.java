@@ -34,6 +34,7 @@ import de.alexanderlindhorst.riak.session.manager.PersistableSession;
 import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
 import static de.alexanderlindhorst.riak.session.TestUtils.setFieldValueForObject;
+import static java.util.Collections.emptyList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -172,6 +173,24 @@ public class SynchronousRiakServiceTest {
         FutureOperation<?, ?, ?> operation = operationCaptor.getValue();
         assertThat(operation.getClass().getName(), is(FetchOperation.class.getName()));
         assertThat(Arrays.equals(serialized, value.getValue()), is(true));
+    }
+
+    @Test
+    public void nullReturnValueFromServerWhileGettingSessionReturnsNull() throws InterruptedException,
+            ExecutionException {
+        RiakObject toReturn = new RiakObject();
+        BinaryValue value = BinaryValue.create(bytes);
+        toReturn.setValue(value);
+        @SuppressWarnings("unchecked")
+        RiakFuture<FetchOperation.Response, Location> coreFuture = mock(RiakFuture.class);
+        FetchOperation.Response fetchOperationResponse = mock(FetchOperation.Response.class);
+        when(fetchOperationResponse.getObjectList()).thenReturn(emptyList());
+        when(coreFuture.get()).thenReturn(fetchOperationResponse);
+        when(cluster.execute(any(FetchOperation.class))).thenReturn(coreFuture);
+
+        byte[] serialized = service.getSessionInternal("sessionId");
+
+        assertThat(serialized, is(nullValue()));
     }
 
     @Test(expected = RiakAccessException.class)

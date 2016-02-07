@@ -20,6 +20,9 @@ public final class PersistableSessionUtils {
     }
 
     public static byte[] serializeSession(PersistableSession session) {
+        if (session == null) {
+            return null;
+        }
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             ObjectOutputStream stream = new ObjectOutputStream(out);
@@ -35,6 +38,12 @@ public final class PersistableSessionUtils {
     }
 
     public static PersistableSession deserializeSessionInto(PersistableSession emptyShell, byte[] bytes) {
+        if (emptyShell == null) {
+            throw new IllegalArgumentException("empty session must not be null");
+        }
+        if (bytes == null) {
+            return null;
+        }
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(bytes);
             ObjectInputStream stream = new ObjectInputStream(in);
