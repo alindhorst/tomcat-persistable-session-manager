@@ -69,7 +69,6 @@ public class SynchronousRiakServiceTest {
         service = new SynchronousRiakService();
         setFieldValueForObject(service, "client", client);
         when(client.shutdown()).thenReturn(shutdownFuture);
-        when(shutdownFuture.get(any(Long.class), any(TimeUnit.class))).thenReturn(Boolean.TRUE);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -249,5 +248,12 @@ public class SynchronousRiakServiceTest {
     public void serviceShutDownMakeSessionDeletionFail() {
         service.shutdown();
         service.deleteSessionInternal("sessionId");
+    }
+
+    @Test
+    public void serviceShutDownGracefullyHandlesException() throws InterruptedException, ExecutionException,
+            TimeoutException {
+        when(shutdownFuture.get(any(Long.class), any(TimeUnit.class))).thenThrow(new InterruptedException());
+        service.shutdown();
     }
 }

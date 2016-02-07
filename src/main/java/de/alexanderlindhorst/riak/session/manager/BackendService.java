@@ -17,4 +17,6 @@ public interface BackendService {
     public void setBackendAddress(String backendAddress);
 
     public void init();
+
+    void shutdown();
 }

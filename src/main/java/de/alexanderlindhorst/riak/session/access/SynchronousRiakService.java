@@ -24,8 +24,6 @@ import com.basho.riak.client.core.util.BinaryValue;
 
 import de.alexanderlindhorst.riak.session.manager.BackendServiceBase;
 
-import javax.annotation.PreDestroy;
-
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 /**
@@ -120,7 +118,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         }
     }
 
-    @PreDestroy
+    @Override
     public void shutdown() {
         shuttingDown = true;
         Future<Boolean> shutdown = client.shutdown();

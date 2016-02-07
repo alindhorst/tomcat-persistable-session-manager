@@ -28,7 +28,7 @@ import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 public class RiakSessionManager extends ManagerBase implements SessionListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("SessionManagement");
-    private BackendService riakService;
+    private BackendService backendService;
     private String serviceImplementationClassName;
     private String serviceBackendAddress;
 
@@ -53,9 +53,9 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         LOGGER.debug("initInternal called");
         super.initInternal();
         try {
-            riakService = (BackendService) Class.forName(serviceImplementationClassName).newInstance();
-            riakService.setBackendAddress(serviceBackendAddress);
-            riakService.init();
+            backendService = (BackendService) Class.forName(serviceImplementationClassName).newInstance();
+            backendService.setBackendAddress(serviceBackendAddress);
+            backendService.init();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException ex) {
             throw new LifecycleException(ex);
         }
@@ -75,7 +75,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         LOGGER.debug("createSession {}", sessionId);
         PersistableSession session = (PersistableSession) super.createSession(sessionId);
         session.setDirty(true);
-        riakService.persistSession(session);
+        backendService.persistSession(session);
         session.addSessionListener(this);
         return session;
     }
@@ -92,7 +92,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         } else {
             LOGGER.debug("session {} has no or not current jvm route, fetching from service", id);
             session = new PersistableSession(this);
-            session = riakService.getSession(session, calculateJvmRouteAgnosticSessionId(id));
+            session = backendService.getSession(session, calculateJvmRouteAgnosticSessionId(id));
             if (session != null) {
                 LOGGER.debug("session found, setting flags");
                 //reinitialize transient fields
@@ -126,7 +126,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
             return;
         }
         LOGGER.debug("storing session");
-        riakService.persistSession(session);
+        backendService.persistSession(session);
     }
 
     @Override
@@ -158,7 +158,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
     @Override
     public void remove(Session session) {
         super.remove(session);
-        riakService.deleteSession((PersistableSession) session);
+        backendService.deleteSession((PersistableSession) session);
     }
 
     /* Life cycle stuff */
@@ -182,4 +182,13 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         }
     }
 
+    @Override
+    protected void destroyInternal() throws LifecycleException {
+        LOGGER.debug("destroyInternal");
+        if (backendService != null) {
+            backendService.shutdown();
+            LOGGER.debug("backend service shutdown seems to have completed");
+        }
+        super.destroyInternal();
+    }
 }

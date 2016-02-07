@@ -43,4 +43,8 @@ public class FakeRiakService extends BackendServiceBase {
         LOGGER.debug("init");
     }
 
+    @Override
+    public void shutdown() {
+        LOGGER.debug("This implementation has no tasks during shutdown");
+    }
 }
