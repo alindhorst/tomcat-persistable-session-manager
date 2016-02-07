@@ -5,13 +5,14 @@ package de.alexanderlindhorst.riak.session.access;
 
 import java.net.UnknownHostException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.commands.kv.DeleteValue;
 import com.basho.riak.client.api.commands.kv.FetchValue;
 import com.basho.riak.client.api.commands.kv.StoreValue;
 import com.basho.riak.client.core.RiakCluster;
@@ -23,6 +24,8 @@ import com.basho.riak.client.core.util.BinaryValue;
 
 import de.alexanderlindhorst.riak.session.manager.BackendServiceBase;
 
+import javax.annotation.PreDestroy;
+
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 /**
@@ -30,15 +33,17 @@ import static com.google.common.base.Strings.isNullOrEmpty;
  */
 public class SynchronousRiakService extends BackendServiceBase {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SynchronousRiakService.class);
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
-    private RiakCluster cluster;
+    private RiakClient client;
+    private boolean shuttingDown;
 
     @Override
     protected void persistSessionInternal(String sessionId, byte[] bytes) {
+        if (shuttingDown) {
+            throw new RiakAccessException("Service is shutting down", null);
+        }
         LOGGER.debug("persistSessionInternal {}", sessionId);
         try {
-            RiakClient client = new RiakClient(cluster);
             RiakObject object = new RiakObject().setValue(BinaryValue.create(bytes));
             Location location = new Location(SESSIONS, sessionId);
             StoreValue storeOp = new StoreValue.Builder(object)
@@ -53,9 +58,11 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     @Override
     protected byte[] getSessionInternal(String sessionId) {
+        if (shuttingDown) {
+            throw new RiakAccessException("Service is shutting down", null);
+        }
         try {
             LOGGER.debug("getSessionInternal {}", sessionId);
-            RiakClient client = new RiakClient(cluster);
             Location location = new Location(SESSIONS, sessionId);
             FetchValue fetchValue = new FetchValue.Builder(location).build();
             return client.execute(fetchValue).getValue(RiakObject.class).getValue().getValue();
@@ -66,7 +73,17 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     @Override
     protected void deleteSessionInternal(String sessionId) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        if (shuttingDown) {
+            throw new RiakAccessException("Service is shutting down", null);
+        }
+        try {
+            LOGGER.debug("deleteSessionInternal{}", sessionId);
+            Location location = new Location(SESSIONS, sessionId);
+            DeleteValue deleteValue = new DeleteValue.Builder(location).build();
+            client.execute(deleteValue);
+        } catch (ExecutionException | InterruptedException ex) {
+            throw new RiakAccessException("Couldn't delete session " + sessionId, ex);
+        }
     }
 
     @Override
@@ -90,11 +107,23 @@ public class SynchronousRiakService extends BackendServiceBase {
                     .withRemoteAddress(host)
                     .withRemotePort(port)
                     .build();
-            cluster = new RiakCluster.Builder(node)
+            RiakCluster cluster = new RiakCluster.Builder(node)
                     .build();
             cluster.start();
+            client = new RiakClient(cluster);
         } catch (UnknownHostException ex) {
             throw new IllegalStateException("Couldn't configure riak access", ex);
+        }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        shuttingDown = true;
+        Future<Boolean> shutdown = client.shutdown();
+        try {
+            shutdown.get(3, TimeUnit.SECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+            LOGGER.warn("Problem occured during Riak cluster shutdown", ex);
         }
     }
 }

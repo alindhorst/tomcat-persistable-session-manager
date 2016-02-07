@@ -27,6 +27,13 @@ public final class TestUtils {
         return field.get(object);
     }
 
+    public static void setFieldValueForObject(Object object, String fieldName, Object value) throws
+            IllegalArgumentException, IllegalAccessException, NoSuchFieldException {
+        Field field = object.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(object, value);
+    }
+
     public static Object invokeMethod(Object object, String methodName, Parameter... parameters) throws
             NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Method method = findMethod(object.getClass(), methodName, parameters);

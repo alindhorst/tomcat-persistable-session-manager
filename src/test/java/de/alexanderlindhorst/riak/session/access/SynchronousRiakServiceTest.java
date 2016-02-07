@@ -5,19 +5,24 @@ package de.alexanderlindhorst.riak.session.access;
 
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.core.FutureOperation;
 import com.basho.riak.client.core.RiakCluster;
 import com.basho.riak.client.core.RiakFuture;
 import com.basho.riak.client.core.RiakNode;
+import com.basho.riak.client.core.operations.DeleteOperation;
 import com.basho.riak.client.core.operations.FetchOperation;
 import com.basho.riak.client.core.operations.StoreOperation;
 import com.basho.riak.client.core.query.Location;
@@ -28,6 +33,7 @@ import de.alexanderlindhorst.riak.session.manager.PersistableSession;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.riak.session.TestUtils.setFieldValueForObject;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -47,11 +53,23 @@ public class SynchronousRiakServiceTest {
     private RiakCluster cluster;
     @Mock
     private PersistableSession session;
-    @InjectMocks
-    private SynchronousRiakService service;
+    @Mock
+    private Future<Boolean> shutdownFuture;
     @Captor
     private ArgumentCaptor<FutureOperation<?, ?, ?>> operationCaptor;
+    private RiakClient client;
+    private SynchronousRiakService service;
     private final byte[] bytes = new byte[]{1};
+
+    @Before
+    public void setup() throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException,
+            InterruptedException, ExecutionException, TimeoutException {
+        client = new RiakClient(cluster);
+        service = new SynchronousRiakService();
+        setFieldValueForObject(service, "client", client);
+        when(client.shutdown()).thenReturn(shutdownFuture);
+        when(shutdownFuture.get(any(Long.class), any(TimeUnit.class))).thenReturn(Boolean.TRUE);
+    }
 
     @Test(expected = IllegalArgumentException.class)
     public void initFailsWithNullBackendAddress() {
@@ -81,7 +99,7 @@ public class SynchronousRiakServiceTest {
         service.setBackendAddress("riak");
         service.init();
 
-        RiakCluster returnedCluster = (RiakCluster) getFieldValueFromObject(service, "cluster");
+        RiakCluster returnedCluster = ((RiakClient) getFieldValueFromObject(service, "client")).getRiakCluster();
         assertThat(returnedCluster, is(not(nullValue())));
         assertThat(returnedCluster.getNodes().size(), is(1));
     }
@@ -92,7 +110,7 @@ public class SynchronousRiakServiceTest {
         service.setBackendAddress("riak");
         service.init();
 
-        RiakNode node = ((RiakCluster) getFieldValueFromObject(service, "cluster")).getNodes().get(0);
+        RiakNode node = ((RiakClient) getFieldValueFromObject(service, "client")).getRiakCluster().getNodes().get(0);
         assertThat(node.getRemoteAddress(), is("riak"));
         assertThat(node.getPort(), is(10017));
     }
@@ -103,7 +121,7 @@ public class SynchronousRiakServiceTest {
         service.setBackendAddress("riak:100");
         service.init();
 
-        RiakNode node = ((RiakCluster) getFieldValueFromObject(service, "cluster")).getNodes().get(0);
+        RiakNode node = ((RiakClient) getFieldValueFromObject(service, "client")).getRiakCluster().getNodes().get(0);
         assertThat(node.getRemoteAddress(), is("riak"));
         assertThat(node.getPort(), is(100));
     }
@@ -140,7 +158,7 @@ public class SynchronousRiakServiceTest {
     @Test
     public void getSessionInternalRunsFetchCommandOnCluster() throws InterruptedException, ExecutionException {
         RiakObject toReturn = new RiakObject();
-        BinaryValue value = BinaryValue.create("blubba");
+        BinaryValue value = BinaryValue.create(bytes);
         toReturn.setValue(value);
         @SuppressWarnings("unchecked")
         RiakFuture<FetchOperation.Response, Location> coreFuture = mock(RiakFuture.class);
@@ -148,11 +166,69 @@ public class SynchronousRiakServiceTest {
         when(fetchOperationResponse.getObjectList()).thenReturn(newArrayList(toReturn));
         when(coreFuture.get()).thenReturn(fetchOperationResponse);
         when(cluster.execute(any(FetchOperation.class))).thenReturn(coreFuture);
-        byte[] bytes = service.getSessionInternal("sessionId");
+        byte[] serialized = service.getSessionInternal("sessionId");
 
         verify(cluster).execute(operationCaptor.capture());
         FutureOperation<?, ?, ?> operation = operationCaptor.getValue();
         assertThat(operation.getClass().getName(), is(FetchOperation.class.getName()));
-        assertThat(Arrays.equals(bytes, value.getValue()), is(true));
+        assertThat(Arrays.equals(serialized, value.getValue()), is(true));
+    }
+
+    @Test(expected = RiakAccessException.class)
+    @SuppressWarnings("unchecked")
+    public void executionExceptionWhileGettingSessionThrowsRiakAccessException() {
+        when(cluster.execute(any(FutureOperation.class))).thenThrow(ExecutionException.class);
+        service.getSessionInternal("any");
+    }
+
+    @Test(expected = RiakAccessException.class)
+    @SuppressWarnings("unchecked")
+    public void interruptedExceptionWhileGettingSessionThrowsRiakAccessException() {
+        when(cluster.execute(any(FutureOperation.class))).thenThrow(InterruptedException.class);
+        service.getSessionInternal("any");
+    }
+
+    @Test
+    public void deleteSessionInternalRunsDeleteCommandOnCluster() throws InterruptedException, ExecutionException {
+        @SuppressWarnings("unchecked")
+        RiakFuture<Void, Location> coreFuture = mock(RiakFuture.class);
+        when(cluster.execute(any(DeleteOperation.class))).thenReturn(coreFuture);
+        service.deleteSessionInternal("sessionId");
+
+        verify(cluster).execute(operationCaptor.capture());
+        FutureOperation<?, ?, ?> operation = operationCaptor.getValue();
+        assertThat(operation.getClass().getName(), is(DeleteOperation.class.getName()));
+    }
+
+    @Test(expected = RiakAccessException.class)
+    @SuppressWarnings("unchecked")
+    public void executionExceptionWhileDeletingSessionThrowsRiakAccessException() {
+        when(cluster.execute(any(FutureOperation.class))).thenThrow(ExecutionException.class);
+        service.deleteSessionInternal("any");
+    }
+
+    @Test(expected = RiakAccessException.class)
+    @SuppressWarnings("unchecked")
+    public void interruptedExceptionWhileDeletingSessionThrowsRiakAccessException() {
+        when(cluster.execute(any(FutureOperation.class))).thenThrow(InterruptedException.class);
+        service.deleteSessionInternal("any");
+    }
+
+    @Test(expected = RiakAccessException.class)
+    public void serviceShutDownMakeSessionPersistingFail() {
+        service.shutdown();
+        service.persistSessionInternal("sessionId", bytes);
+    }
+
+    @Test(expected = RiakAccessException.class)
+    public void serviceShutDownMakeSessionGettingFail() {
+        service.shutdown();
+        service.getSessionInternal("sessionId");
+    }
+
+    @Test(expected = RiakAccessException.class)
+    public void serviceShutDownMakeSessionDeletionFail() {
+        service.shutdown();
+        service.deleteSessionInternal("sessionId");
     }
 }

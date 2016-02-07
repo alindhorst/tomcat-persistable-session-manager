@@ -15,7 +15,7 @@ import static de.alexanderlindhorst.riak.session.manager.PersistableSessionUtils
  */
 public abstract class BackendServiceBase implements BackendService {
 
-    protected static final Logger LOGGER = LoggerFactory.getLogger("RiakService");
+    protected static final Logger LOGGER = LoggerFactory.getLogger(BackendServiceBase.class);
     private String backendAddress;
 
     @Override
