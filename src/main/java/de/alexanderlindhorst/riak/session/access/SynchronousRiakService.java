@@ -29,7 +29,7 @@ import static com.google.common.base.Strings.isNullOrEmpty;
  * @author alindhorst
  */
 public class SynchronousRiakService extends BackendServiceBase {
-    
+
     private static final Logger LOGGER = LoggerFactory.getLogger(SynchronousRiakService.class);
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
     private RiakCluster cluster;
@@ -58,18 +58,17 @@ public class SynchronousRiakService extends BackendServiceBase {
             RiakClient client = new RiakClient(cluster);
             Location location = new Location(SESSIONS, sessionId);
             FetchValue fetchValue = new FetchValue.Builder(location).build();
-            client.execute(fetchValue).getValue(RiakObject.class).getValue().getValue();
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            return client.execute(fetchValue).getValue(RiakObject.class).getValue().getValue();
         } catch (ExecutionException | InterruptedException ex) {
             throw new RiakAccessException("Couldn't fetch session " + sessionId, ex);
         }
     }
-    
+
     @Override
     protected void deleteSessionInternal(String sessionId) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-    
+
     @Override
     public void init() {
         if (isNullOrEmpty(getBackendAddress())) {
