@@ -5,7 +5,6 @@ package de.alexanderlindhorst.riak.session.manager;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
@@ -14,7 +13,11 @@ import static de.alexanderlindhorst.riak.session.manager.BackendServiceBase.LOGG
 /**
  * @author lindhrst (original author)
  */
-public class PersistableSessionUtils {
+public final class PersistableSessionUtils {
+
+    private PersistableSessionUtils() {
+        //utils class
+    }
 
     public static byte[] serializeSession(PersistableSession session) {
         try {
@@ -25,8 +28,8 @@ public class PersistableSessionUtils {
             byte[] bytes = out.toByteArray();
             out.close();
             return bytes;
-        } catch (IOException iOException) {
-            LOGGER.error("Couldn't serialize session, will return null value", iOException);
+        } catch (Exception ex) {
+            LOGGER.error("Couldn't serialize session, will return null value", ex);
         }
         return null;
     }
@@ -39,7 +42,7 @@ public class PersistableSessionUtils {
             stream.close();
             in.close();
             return emptyShell;
-        } catch (IOException | ClassNotFoundException ex) {
+        } catch (Exception ex) {
             LOGGER.error("Couldn't deserialize session, will return null value", ex);
         }
         return null;
