@@ -29,6 +29,9 @@ import org.mockito.runners.MockitoJUnitRunner;
 import de.alexanderlindhorst.riak.session.TestUtils.Parameter;
 import de.alexanderlindhorst.riak.session.access.FakeRiakService;
 
+import javax.servlet.http.HttpSessionEvent;
+import javax.servlet.http.HttpSessionIdListener;
+
 import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
 import static de.alexanderlindhorst.riak.session.TestUtils.invokeMethod;
 import static de.alexanderlindhorst.riak.session.TestUtils.setFieldValueForObject;
@@ -53,6 +56,8 @@ public class RiakSessionManagerTest {
     @Mock
     private Context context;
     @Mock
+    private HttpSessionIdListener sessionIdListener;
+    @Mock
     private SessionIdGenerator sessionIdGenerator;
     @Mock
     private Engine engine;
@@ -60,6 +65,8 @@ public class RiakSessionManagerTest {
     private SessionListener sessionListener;
     @Captor
     private ArgumentCaptor<SessionEvent> sessionEventCaptor;
+    @Captor
+    private ArgumentCaptor<HttpSessionEvent> httpSessionEventCaptor;
     @InjectMocks
     private RiakSessionManager instance;
 
@@ -129,16 +136,17 @@ public class RiakSessionManagerTest {
     public void findSessionSignalsNewSessionWhenGoingToPersistenceAndDifferentJVMRoute() throws IOException {
         String sessionId = "mySession.host1"; //context gives "host" as jvmroute
         PersistableSession session = new PersistableSession(instance);
-        session.setId(sessionId);
+        session.setId("mySession.host"); //container sets this to "new" route
         session.addSessionListener(sessionListener);
         when(backendService.getSession(any(PersistableSession.class), eq(sessionId))).thenReturn(session);
         when(backendService.getSession(any(PersistableSession.class), eq("mySession"))).thenReturn(session);
+        when(context.getApplicationEventListeners()).thenReturn(new Object[]{sessionIdListener});
         instance.findSession(sessionId);
 
-        verify(sessionListener).sessionEvent(sessionEventCaptor.capture());
+        verify(sessionIdListener).sessionIdChanged(httpSessionEventCaptor.capture(), any(String.class));
         assertThat(session.getIdInternal(), is("mySession"));
         assertThat(session.getId(), is("mySession.host"));
-        assertThat(sessionEventCaptor.getValue().getType(), is(Session.SESSION_CREATED_EVENT));
+        assertThat(httpSessionEventCaptor.getValue().getSession().getId(), is("mySession.host"));
     }
 
     @Test

@@ -98,14 +98,9 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
                 //reinitialize transient fields
                 session.setManager(this);
                 addSessionListenerUniquelyTo(session);
-                String oldId = session.getId();
-                String newId = session.getIdInternal();
                 if (contextJvmRoute != null) {
-                    newId = newId + "." + contextJvmRoute;
-                }
-                if (!oldId.equals(newId)) {
-                    session.setId(newId);
-                    session.tellChangedSessionId(newId, oldId, true, true);
+                    //the jvm route part changed, notifiy the world of it
+                    session.tellChangedSessionId(session.getId(), id, true, true);
                 }
             }
         }
