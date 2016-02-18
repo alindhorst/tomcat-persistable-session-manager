@@ -102,6 +102,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
                     //the jvm route part changed, notifiy the world of it
                     session.tellChangedSessionId(session.getId(), id, true, true);
                 }
+                //todo - super.add(session);
             }
         }
         return session;

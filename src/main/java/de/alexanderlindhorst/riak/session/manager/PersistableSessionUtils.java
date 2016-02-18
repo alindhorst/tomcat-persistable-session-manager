@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.regex.Pattern;
 
 import static de.alexanderlindhorst.riak.session.manager.BackendServiceBase.LOGGER;
 
@@ -14,6 +15,8 @@ import static de.alexanderlindhorst.riak.session.manager.BackendServiceBase.LOGG
  * @author lindhrst (original author)
  */
 public final class PersistableSessionUtils {
+
+    static final Pattern SESSION_ID_PATTERN = Pattern.compile("^(?<sessionId>[^\\.]+)(\\.(?<jvmRoute>.*))?$");
 
     private PersistableSessionUtils() {
         //utils class
