@@ -6,11 +6,11 @@ package de.alexanderlindhorst.tomcat.session.valve;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 
-import com.google.common.collect.Lists;
-
 import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
+
+import org.apache.catalina.connector.Request;
+
+import com.google.common.collect.Lists;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.URI_PATTERN;
@@ -18,28 +18,29 @@ import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.URI_PATTER
 /**
  * @author lindhrst (original author)
  */
-class RequestWrapper extends HttpServletRequestWrapper {
+class RequestWrapper extends Request {
 
     private final String sessionId;
-    private final StringBuffer requestURL;
-    private final Cookie[] cookies;
+    private final StringBuffer shadowedRequestUrl;
+    private final Cookie[] shadowedCookies;
 
-    public RequestWrapper(String sessionId, Cookie[] cookies, HttpServletRequest request) {
-        super(request);
+    public RequestWrapper(org.apache.coyote.Request nativeRequest, String sessionId) {
+        setCoyoteRequest(coyoteRequest);
         this.sessionId = sessionId;
-        this.cookies = request.isRequestedSessionIdFromCookie() ? adjustSessionIdInCookies(cookies, sessionId) : cookies;
-        this.requestURL = request.isRequestedSessionIdFromURL() ? adjustUrlString(request, sessionId) :
-                request.getRequestURL();
+        this.shadowedCookies = super.isRequestedSessionIdFromCookie() ? adjustSessionIdInCookies(super.getCookies(), sessionId)
+                               : super.getCookies();
+        this.shadowedRequestUrl = super.isRequestedSessionIdFromURL() ? adjustUrlString(super.getRequestURL().toString(), sessionId)
+                                  : super.getRequestURL();
     }
 
     @Override
     public Cookie[] getCookies() {
-        return cookies;
+        return shadowedCookies;
     }
 
     @Override
     public StringBuffer getRequestURL() {
-        return new StringBuffer(requestURL);
+        return new StringBuffer(shadowedRequestUrl);
     }
 
     static Cookie[] adjustSessionIdInCookies(Cookie[] originalCookies, String sessionId) {
@@ -55,8 +56,8 @@ class RequestWrapper extends HttpServletRequestWrapper {
         return cookieList.toArray(new Cookie[originalCookies.length]);
     }
 
-    private static StringBuffer adjustUrlString(HttpServletRequest request, String sessionId) {
-        Matcher matcher = URI_PATTERN.matcher(request.getRequestURL().toString());
+    private static StringBuffer adjustUrlString(String requestUrl, String sessionId) {
+        Matcher matcher = URI_PATTERN.matcher(requestUrl);
         if (!matcher.matches()) {
             throw new IllegalStateException("Method must only be called if jsessionid is contained in URL");
         }

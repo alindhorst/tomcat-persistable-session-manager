@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionIdFromRequest;
+import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionIdInternalFromRequest;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionJvmRouteFromRequest;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -84,6 +85,35 @@ public class RequestUtilsTest {
         when(request.isRequestedSessionIdFromURL()).thenReturn(Boolean.FALSE);
         when(request.isRequestedSessionIdFromCookie()).thenReturn(Boolean.FALSE);
         assertThat(getSessionJvmRouteFromRequest(request), is(nullValue()));
+    }
+
+    @Test
+    public void sessionIdInteranlCanBeReadFromUrl() {
+        when(request.getRequestURL()).thenReturn(new StringBuffer("http://host:1234/path;jsessionid=" + SHORT_ID),
+                new StringBuffer("http://host:3434/path;jsessionid=" + LONG_ID));
+        when(request.isRequestedSessionIdFromURL()).thenReturn(Boolean.TRUE);
+        when(request.isRequestedSessionIdFromCookie()).thenReturn(Boolean.FALSE);
+        assertThat(getSessionIdInternalFromRequest(request), is(SHORT_ID));
+        assertThat(getSessionIdInternalFromRequest(request), is(SHORT_ID));
+    }
+
+    @Test
+    public void sessionIdInternalCanBeReadFromCookie() {
+        when(request.isRequestedSessionIdFromURL()).thenReturn(Boolean.FALSE);
+        when(request.isRequestedSessionIdFromCookie()).thenReturn(Boolean.TRUE);
+        when(request.getCookies()).thenReturn(new Cookie[]{new Cookie("JSESSIONID", SHORT_ID)}, new Cookie[]{new Cookie("JSESSIONID",
+            LONG_ID)});
+
+        assertThat(getSessionIdInternalFromRequest(request), is(SHORT_ID));
+        assertThat(getSessionIdInternalFromRequest(request), is(SHORT_ID));
+    }
+
+    @Test
+    public void emptySessionIdReturnsNullForSessionInternal() {
+        when(request.isRequestedSessionIdFromURL()).thenReturn(Boolean.FALSE);
+        when(request.isRequestedSessionIdFromCookie()).thenReturn(Boolean.FALSE);
+        
+        assertThat(getSessionIdInternalFromRequest(request), is(nullValue()));
     }
 
     @Test(expected = IllegalStateException.class)
