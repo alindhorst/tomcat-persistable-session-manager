@@ -68,6 +68,6 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
         /*
          Update jvm route in request and pass on
          */
-        getNext().invoke(targetRequest, response);
+        getNext().invoke(targetRequest, response);  
     }
 }
