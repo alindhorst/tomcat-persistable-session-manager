@@ -25,7 +25,7 @@ class RequestWrapper extends Request {
     private final Cookie[] shadowedCookies;
 
     public RequestWrapper(org.apache.coyote.Request nativeRequest, String sessionId) {
-        setCoyoteRequest(coyoteRequest);
+        coyoteRequest = nativeRequest;
         this.sessionId = sessionId;
         this.shadowedCookies = super.isRequestedSessionIdFromCookie() ? adjustSessionIdInCookies(super.getCookies(), sessionId)
                                : super.getCookies();

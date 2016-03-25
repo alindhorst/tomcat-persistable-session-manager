@@ -104,6 +104,7 @@ public class AdjustSessionIdToJvmRouteValveTest {
         when(request.isRequestedSessionIdFromCookie()).thenReturn(Boolean.TRUE);
         when(request.getCookies()).thenReturn(new Cookie[]{new Cookie("JSESSIONID", "id.route2")});
         when(request.getCoyoteRequest()).thenReturn(coyoteRequest);
+        coyoteRequest.scheme().setString("http");
 
         valve.invoke(request, response);
 
