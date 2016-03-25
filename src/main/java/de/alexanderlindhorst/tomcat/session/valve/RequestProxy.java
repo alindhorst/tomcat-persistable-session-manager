@@ -3,6 +3,7 @@
  */
 package de.alexanderlindhorst.tomcat.session.valve;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 
@@ -12,34 +13,37 @@ import org.apache.catalina.connector.Request;
 
 import com.google.common.collect.Lists;
 
+import net.sf.cglib.proxy.InvocationHandler;
+
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.URI_PATTERN;
 
 /**
  * @author lindhrst (original author)
  */
-class RequestWrapper extends Request {
+class RequestProxy implements InvocationHandler {
 
     private final String sessionId;
     private final StringBuffer shadowedRequestUrl;
     private final Cookie[] shadowedCookies;
+    private final Request request;
 
-    public RequestWrapper(org.apache.coyote.Request nativeRequest, String sessionId) {
-        coyoteRequest = nativeRequest;
+    RequestProxy(Request request, String sessionId) {
+        this.request = request;
         this.sessionId = sessionId;
-        this.shadowedCookies = super.isRequestedSessionIdFromCookie() ? adjustSessionIdInCookies(super.getCookies(), sessionId)
-                               : super.getCookies();
-        this.shadowedRequestUrl = super.isRequestedSessionIdFromURL() ? adjustUrlString(super.getRequestURL().toString(), sessionId)
-                                  : super.getRequestURL();
+        this.shadowedCookies = request.isRequestedSessionIdFromCookie() ? adjustSessionIdInCookies(request.getCookies(),
+                sessionId) :
+                 request.getCookies();
+        this.shadowedRequestUrl = request.isRequestedSessionIdFromURL() ? adjustUrlString(
+                request.getRequestURL().toString(), sessionId) :
+                 request.getRequestURL();
     }
 
-    @Override
-    public Cookie[] getCookies() {
+    private Cookie[] getCookies() {
         return shadowedCookies;
     }
 
-    @Override
-    public StringBuffer getRequestURL() {
+    private StringBuffer getRequestURL() {
         return new StringBuffer(shadowedRequestUrl);
     }
 
@@ -59,7 +63,7 @@ class RequestWrapper extends Request {
     private static StringBuffer adjustUrlString(String requestUrl, String sessionId) {
         Matcher matcher = URI_PATTERN.matcher(requestUrl);
         if (!matcher.matches()) {
-            throw new IllegalStateException("Method must only be called if jsessionid is contained in URL");
+            throw new IllegalArgumentException("Method must only be called if jsessionid is contained in URL");
         }
         StringBuffer builder = new StringBuffer();
         builder.append(matcher.group("protocol")).append("://").append(matcher.group("host"));
@@ -77,7 +81,22 @@ class RequestWrapper extends Request {
         return builder;
     }
 
-    public String getSessionId() {
+    private String getSessionInternal() {
         return sessionId;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        if (method.getName().equals("getCookies")) {
+            return getCookies();
+        }
+        if (method.getName().equals("getSessionInternal")) {
+            return getSessionInternal();
+        }
+        if (method.getName().equals("getRequestURL")) {
+            return getRequestURL();
+        }
+
+        return method.invoke(request, args);
     }
 }

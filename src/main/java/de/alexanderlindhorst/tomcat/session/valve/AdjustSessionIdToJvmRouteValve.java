@@ -19,6 +19,7 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionIdFromRequest;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionIdInternalFromRequest;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionJvmRouteFromRequest;
+import static net.sf.cglib.proxy.Enhancer.create;
 
 /**
  * @author lindhrst (original author)
@@ -63,11 +64,11 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
             PersistableSession sessionFromPersistenceLayer = (PersistableSession) m.findSession(requestSessionId);
             sessionFromPersistenceLayer.setId(sessionIdInternal + "." + routeFromManager);
             manager.add(sessionFromPersistenceLayer);
-            targetRequest = new RequestWrapper(request.getCoyoteRequest(), requestSessionId);
+            targetRequest = (Request) create(Request.class, new RequestProxy(request, requestSessionId));
         }
         /*
          Update jvm route in request and pass on
          */
-        getNext().invoke(targetRequest, response);  
+        getNext().invoke(targetRequest, response);
     }
 }
