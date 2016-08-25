@@ -19,12 +19,13 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionIdFromRequest;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionIdInternalFromRequest;
 import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.getSessionJvmRouteFromRequest;
-import static net.sf.cglib.proxy.Enhancer.create;
 
 /**
  * @author lindhrst (original author)
  */
 public class AdjustSessionIdToJvmRouteValve extends ValveBase {
+
+    private static final String ORIGINAL_ID_ATTRIBUTE = "org.apache.catalina.ha.session.JvmRouteOrignalSessionID";
 
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
@@ -57,18 +58,23 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
          If != null, set cookie in response with updated session id (inkl new jvm route)
          */
         String routeFromRequest = getSessionJvmRouteFromRequest(request);
-        String sessionIdInternal = getSessionIdInternalFromRequest(request);
         Request targetRequest = request;
         if (!routeFromManager.equals(routeFromRequest)) {
+            String sessionIdInternal = getSessionIdInternalFromRequest(request);
+            String localizedNewSessionId = sessionIdInternal + "." + routeFromManager;
+            String originalSessionId = request.getSession().getId();
             //retrieves session and adds it to local cache
             PersistableSession sessionFromPersistenceLayer = (PersistableSession) m.findSession(requestSessionId);
-            sessionFromPersistenceLayer.setId(sessionIdInternal + "." + routeFromManager);
+            sessionFromPersistenceLayer.setId(localizedNewSessionId);
+            request.changeSessionId(localizedNewSessionId);//change request (org.apache.catalina.connector)
+            //change request attribute
+            request.setAttribute(ORIGINAL_ID_ATTRIBUTE, manager);
             manager.add(sessionFromPersistenceLayer);
-            targetRequest = (Request) create(Request.class, new RequestProxy(request, requestSessionId));
+            //targetRequest = (Request) create(Request.class, new RequestProxy(request, requestSessionId));
         }
         /*
          Update jvm route in request and pass on
          */
-        getNext().invoke(targetRequest, response);
+        getNext().invoke(request, response);
     }
 }

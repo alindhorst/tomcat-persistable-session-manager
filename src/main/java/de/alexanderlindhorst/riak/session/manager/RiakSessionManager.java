@@ -5,11 +5,9 @@ package de.alexanderlindhorst.riak.session.manager;
 
 import java.io.IOException;
 
-import org.apache.catalina.LifecycleException;
-import org.apache.catalina.LifecycleState;
-import org.apache.catalina.Session;
-import org.apache.catalina.SessionEvent;
-import org.apache.catalina.SessionListener;
+import javax.servlet.http.HttpSessionIdListener;
+
+import org.apache.catalina.*;
 import org.apache.catalina.session.ManagerBase;
 import org.apache.catalina.session.StandardSession;
 import org.slf4j.Logger;
@@ -99,13 +97,25 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
                 session.setManager(this);
                 addSessionListenerUniquelyTo(session);
                 if (contextJvmRoute != null) {
-                    //the jvm route part changed, notifiy the world of it
-                    session.tellChangedSessionId(session.getId(), id, true, true);
+                    changeSessionId(session, idJvmRoute);
+                    fireSessionCreated(session);
                 }
                 //todo - super.add(session);
             }
         }
         return session;
+    }
+
+    private void fireSessionCreated(Session session) {
+        SessionEvent event = new SessionEvent(session, SESSION_CREATED_EVENT, null);
+        Object[] applicationEventListeners = getContext().getApplicationEventListeners();
+        for (int i = 0; i < applicationEventListeners.length; i++) {
+            Object applicationEventListener = applicationEventListeners[i];
+            if (applicationEventListener instanceof HttpSessionIdListener) {
+                SessionListener listener = (SessionListener) applicationEventListener;
+                listener.sessionEvent(event);
+            }
+        }
     }
 
     private void addSessionListenerUniquelyTo(PersistableSession session) {
