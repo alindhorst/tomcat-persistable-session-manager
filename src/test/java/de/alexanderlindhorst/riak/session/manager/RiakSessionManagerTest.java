@@ -13,7 +13,6 @@ import javax.servlet.http.HttpSessionIdListener;
 import org.apache.catalina.*;
 import org.apache.catalina.session.StandardSession;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -126,7 +125,6 @@ public class RiakSessionManagerTest {
     }
 
     @Test
-    @Ignore("events changed, needs adjustment")
     public void findSessionSignalsNewSessionWhenGoingToPersistenceAndDifferentJVMRoute() throws IOException {
         String sessionId = "mySession.host1"; //context gives "host" as jvmroute
         PersistableSession session = new PersistableSession(instance);

@@ -5,14 +5,13 @@ package de.alexanderlindhorst.riak.session.manager;
 
 import java.io.IOException;
 
-import javax.servlet.http.HttpSessionIdListener;
-
 import org.apache.catalina.*;
 import org.apache.catalina.session.ManagerBase;
 import org.apache.catalina.session.StandardSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static de.alexanderlindhorst.riak.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
 import static de.alexanderlindhorst.riak.session.manager.PersistableSession.calculateJvmRoute;
 import static de.alexanderlindhorst.riak.session.manager.PersistableSession.calculateJvmRouteAgnosticSessionId;
@@ -90,18 +89,25 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         } else {
             LOGGER.debug("session {} has no or not current jvm route, fetching from service", id);
             session = new PersistableSession(this);
-            session = backendService.getSession(session, calculateJvmRouteAgnosticSessionId(id));
+            String routeAgnosticId = calculateJvmRouteAgnosticSessionId(id);
+            session = backendService.getSession(session, routeAgnosticId);
             if (session != null) {
                 LOGGER.debug("session found, setting flags");
                 //reinitialize transient fields
                 session.setManager(this);
                 addSessionListenerUniquelyTo(session);
-                if (contextJvmRoute != null) {
-                    changeSessionId(session, idJvmRoute);
-                    fireSessionCreated(session);
+                String newId = null;
+                if (!(isNullOrEmpty(idJvmRoute) || isNullOrEmpty(contextJvmRoute))) {
+                    newId = routeAgnosticId + "." + contextJvmRoute;
+                } else {
+                    newId = routeAgnosticId;
                 }
-                //todo - super.add(session);
+                changeSessionId(session, newId);
+                fireSessionCreated(session);
             }
+        }
+        if (session != null) {
+            add(session);
         }
         return session;
     }
@@ -109,9 +115,12 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
     private void fireSessionCreated(Session session) {
         SessionEvent event = new SessionEvent(session, SESSION_CREATED_EVENT, null);
         Object[] applicationEventListeners = getContext().getApplicationEventListeners();
+        if (applicationEventListeners == null) {
+            return;
+        }
         for (int i = 0; i < applicationEventListeners.length; i++) {
             Object applicationEventListener = applicationEventListeners[i];
-            if (applicationEventListener instanceof HttpSessionIdListener) {
+            if (applicationEventListener instanceof SessionListener) {
                 SessionListener listener = (SessionListener) applicationEventListener;
                 listener.sessionEvent(event);
             }

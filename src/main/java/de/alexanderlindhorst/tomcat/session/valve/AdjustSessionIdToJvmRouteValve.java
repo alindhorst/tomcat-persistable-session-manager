@@ -62,7 +62,6 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
         if (!routeFromManager.equals(routeFromRequest)) {
             String sessionIdInternal = getSessionIdInternalFromRequest(request);
             String localizedNewSessionId = sessionIdInternal + "." + routeFromManager;
-            String originalSessionId = request.getSession().getId();
             //retrieves session and adds it to local cache
             PersistableSession sessionFromPersistenceLayer = (PersistableSession) m.findSession(requestSessionId);
             sessionFromPersistenceLayer.setId(localizedNewSessionId);

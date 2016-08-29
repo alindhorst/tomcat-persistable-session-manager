@@ -97,7 +97,7 @@ public class AdjustSessionIdToJvmRouteValveTest {
     }
 
     @Test
-    @Ignore("logic changed, runtime tests pending, ignored")
+    @Ignore("logic changed, runtime tests pending, ignored; change invoked instance")
     public void requestWithDifferentRouteAsManagerCausesSessionFetch() throws IOException, ServletException {
         when(context.getManager()).thenReturn(wellKnownManager);
         when(wellKnownManager.getJvmRoute()).thenReturn("route");
