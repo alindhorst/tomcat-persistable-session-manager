@@ -79,7 +79,7 @@ public class SynchronousRiakService extends BackendServiceBase {
             throw new RiakAccessException("Service is shutting down", null);
         }
         try {
-            LOGGER.debug("deleteSessionInternal{}", sessionId);
+            LOGGER.debug("deleteSessionInternal {}", sessionId);
             Location location = new Location(SESSIONS, sessionId);
             DeleteValue deleteValue = new DeleteValue.Builder(location).build();
             client.execute(deleteValue);

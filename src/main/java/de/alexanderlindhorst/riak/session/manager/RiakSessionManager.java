@@ -87,11 +87,14 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
             LOGGER.debug("session id has current jvm route, fetching from local storage");
             session = (PersistableSession) super.findSession(calculateJvmRouteAgnosticSessionId(id));
         } else {
-            LOGGER.debug("session {} has no or not current jvm route, fetching from service", id);
-            session = new PersistableSession(this);
             String routeAgnosticId = calculateJvmRouteAgnosticSessionId(id);
+            LOGGER.debug("session {} has no or not current jvm route, fetching from service for agnostic id {}", id,
+                    routeAgnosticId);
+            session = new PersistableSession(this);
             session = backendService.getSession(session, routeAgnosticId);
             if (session != null) {
+                //tell the world we're recreating it in this container
+                fireSessionCreated(session);
                 LOGGER.debug("session found, setting flags");
                 //reinitialize transient fields
                 session.setManager(this);
@@ -102,8 +105,8 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
                 } else {
                     newId = routeAgnosticId;
                 }
+                LOGGER.debug("setting session id to new id {}", newId);
                 changeSessionId(session, newId);
-                fireSessionCreated(session);
             }
         }
         if (session != null) {
