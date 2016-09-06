@@ -77,41 +77,73 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         return session;
     }
 
+    private boolean needsRefresh(String idRoute, String contextRoute) {
+        if (isNullOrEmpty(idRoute)) {
+            return true; //no route in session, refresh every time
+        }
+        if (!idRoute.equals(contextRoute)) {
+            return true; //route in id, but not what we need, refresh
+        }
+        //id route and context route are the same
+        return false;
+    }
+
     @Override
     public Session findSession(String id) throws IOException {
         LOGGER.debug("findSession #{}", id);
+        if (isNullOrEmpty(id)) {
+            throw new IllegalArgumentException("id must not be null or empty");
+        }
         String idJvmRoute = calculateJvmRoute(id);
         String contextJvmRoute = getJvmRoute();
+        boolean needsRefresh = needsRefresh(idJvmRoute, contextJvmRoute);
+        String jvmRouteAgnosticSessionId = calculateJvmRouteAgnosticSessionId(id);
         PersistableSession session;
-        if (idJvmRoute != null && idJvmRoute.equals(contextJvmRoute)) {
+        if (!needsRefresh) {
             LOGGER.debug("session id has current jvm route, fetching from local storage");
-            session = (PersistableSession) super.findSession(calculateJvmRouteAgnosticSessionId(id));
+            session = (PersistableSession) super.findSession(jvmRouteAgnosticSessionId);
         } else {
-            String routeAgnosticId = calculateJvmRouteAgnosticSessionId(id);
             LOGGER.debug("session {} has no or not current jvm route, fetching from service for agnostic id {}", id,
-                    routeAgnosticId);
-            session = new PersistableSession(this);
-            session = backendService.getSession(session, routeAgnosticId);
+                    jvmRouteAgnosticSessionId);
+            session = getSessionShell(id);
+            session = backendService.getSession(session, jvmRouteAgnosticSessionId);
             if (session != null) {
-                //tell the world we're recreating it in this container
-                fireSessionCreated(session);
                 LOGGER.debug("session found, setting flags");
                 //reinitialize transient fields
                 session.setManager(this);
+                session.setValid(true);
                 addSessionListenerUniquelyTo(session);
                 String newId = null;
                 if (!(isNullOrEmpty(idJvmRoute) || isNullOrEmpty(contextJvmRoute))) {
-                    newId = routeAgnosticId + "." + contextJvmRoute;
+                    newId = jvmRouteAgnosticSessionId + "." + contextJvmRoute;
                 } else {
-                    newId = routeAgnosticId;
+                    newId = jvmRouteAgnosticSessionId;
+                }
+                //overwrite with newly created version
+                if (session.isNew()) {
+                    fireSessionCreated(session);
                 }
                 LOGGER.debug("setting session id to new id {}", newId);
                 changeSessionId(session, newId);
+                add(session);
             }
         }
+        return session;
+    }
+
+    private PersistableSession getSessionShell(String id) throws IOException {
+        PersistableSession session;
+        session = (PersistableSession) super.findSession(id);
         if (session != null) {
-            add(session);
+            //rethink removal
+            super.remove(session);
+            session.recycle();
+            session.setNew(false);
+        } else {
+            session = new PersistableSession(this);
+            session.setNew(true);
         }
+        session.setValid(true);
         return session;
     }
 

@@ -6,7 +6,6 @@ package de.alexanderlindhorst.riak.session.manager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static de.alexanderlindhorst.riak.session.manager.PersistableSession.calculateJvmRouteAgnosticSessionId;
 import static de.alexanderlindhorst.riak.session.manager.PersistableSessionUtils.deserializeSessionInto;
 import static de.alexanderlindhorst.riak.session.manager.PersistableSessionUtils.serializeSession;
 
@@ -28,7 +27,7 @@ public abstract class BackendServiceBase implements BackendService {
 
     @Override
     public final PersistableSession getSession(PersistableSession emptyShell, String id) {
-        return deserializeSessionInto(emptyShell, getSessionInternal(calculateJvmRouteAgnosticSessionId(id)));
+        return deserializeSessionInto(emptyShell, getSessionInternal(id));
     }
 
     protected abstract byte[] getSessionInternal(String sessionId);
