@@ -5,7 +5,11 @@ package de.alexanderlindhorst.riak.session.manager;
 
 import java.io.IOException;
 
-import org.apache.catalina.*;
+import org.apache.catalina.LifecycleException;
+import org.apache.catalina.LifecycleState;
+import org.apache.catalina.Session;
+import org.apache.catalina.SessionEvent;
+import org.apache.catalina.SessionListener;
 import org.apache.catalina.session.ManagerBase;
 import org.apache.catalina.session.StandardSession;
 import org.slf4j.Logger;
@@ -114,7 +118,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
                 session.setValid(true);
                 addSessionListenerUniquelyTo(session);
                 String newId = null;
-                if (!(isNullOrEmpty(idJvmRoute) || isNullOrEmpty(contextJvmRoute))) {
+                if (!(isNullOrEmpty(contextJvmRoute) || contextJvmRoute.equals(idJvmRoute))) {
                     newId = jvmRouteAgnosticSessionId + "." + contextJvmRoute;
                 } else {
                     newId = jvmRouteAgnosticSessionId;
@@ -192,16 +196,16 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         LOGGER.debug("event {}", event);
         PersistableSession session = (PersistableSession) event.getSession();
         switch (event.getType()) {
-            case SESSION_DESTROYED_EVENT:
-                remove(session);
-                break;
-            case SESSION_CREATED_EVENT:
-            case SESSION_ATTRIBUTE_SET:
-                session.setDirty(true);
-                storeSession(session);
-                break;
-            default:
-                throw new AssertionError("Unknown event type: " + event.getType());
+        case SESSION_DESTROYED_EVENT:
+            remove(session);
+            break;
+        case SESSION_CREATED_EVENT:
+        case SESSION_ATTRIBUTE_SET:
+            session.setDirty(true);
+            storeSession(session);
+            break;
+        default:
+            throw new AssertionError("Unknown event type: " + event.getType());
         }
     }
 
