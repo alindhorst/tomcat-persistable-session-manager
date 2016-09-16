@@ -48,6 +48,7 @@ public final class PersistableSessionUtils {
             return null;
         }
         try {
+            LOGGER.debug("Deserializing from byte array of size {}", bytes.length);
             ByteArrayInputStream in = new ByteArrayInputStream(bytes);
             ObjectInputStream stream = new ObjectInputStream(in);
             emptyShell.readObjectData(stream);
