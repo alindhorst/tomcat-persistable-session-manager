@@ -85,6 +85,9 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         if (isNullOrEmpty(idRoute)) {
             return true; //no route in session, refresh every time
         }
+        if (isNullOrEmpty(contextRoute)) {
+            return true; //no route in context, refresh every time
+        }
         if (!idRoute.equals(contextRoute)) {
             return true; //route in id, but not what we need, refresh
         }
@@ -118,7 +121,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
                 session.setValid(true);
                 addSessionListenerUniquelyTo(session);
                 String newId = null;
-                if (!(isNullOrEmpty(contextJvmRoute) || contextJvmRoute.equals(idJvmRoute))) {
+                if (!isNullOrEmpty(contextJvmRoute)) {
                     newId = jvmRouteAgnosticSessionId + "." + contextJvmRoute;
                 } else {
                     newId = jvmRouteAgnosticSessionId;

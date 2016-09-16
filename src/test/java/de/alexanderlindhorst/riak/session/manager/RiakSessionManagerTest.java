@@ -10,7 +10,15 @@ import java.util.UUID;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionIdListener;
 
-import org.apache.catalina.*;
+import org.apache.catalina.Context;
+import org.apache.catalina.Engine;
+import org.apache.catalina.LifecycleException;
+import org.apache.catalina.LifecycleState;
+import org.apache.catalina.Manager;
+import org.apache.catalina.Session;
+import org.apache.catalina.SessionEvent;
+import org.apache.catalina.SessionIdGenerator;
+import org.apache.catalina.SessionListener;
 import org.apache.catalina.session.StandardSession;
 import org.junit.Before;
 import org.junit.Test;
@@ -96,6 +104,23 @@ public class RiakSessionManagerTest {
     }
 
     @Test
+    public void findSessionRetrievesFromServiceIfNoContextRouteGiven() throws IOException, IllegalArgumentException,
+            IllegalAccessException, NoSuchFieldException {
+        Engine engineLocal = mock(Engine.class);
+        when(engineLocal.getJvmRoute()).thenReturn(null);
+        Context contextLocal = mock(Context.class);
+        when(contextLocal.getParent()).thenReturn(engineLocal);
+        when(contextLocal.getName()).thenReturn("/mycontext");
+        instance = new RiakSessionManager();
+        instance.setContext(contextLocal);
+        setFieldValueForObject(instance, "backendService", backendService);
+        String sessionId = "mysession";
+
+        instance.findSession(sessionId + ".host");
+        verify(backendService).getSession(any(PersistableSession.class), eq(sessionId));
+    }
+
+    @Test
     public void findSessionRetrievesSessionFromServiceIfNoJVMRouteGiven() throws IOException {
         String sessionId = "mySession";
         Session found = instance.findSession(sessionId);
@@ -164,6 +189,16 @@ public class RiakSessionManagerTest {
         verify(sessionListener, never()).sessionEvent((SessionEvent) any());
         assertThat(session.getIdInternal(), is("mySession"));
         assertThat(session.getId(), is("mySession"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void findSessionFailsWithNullSessionId() throws IOException {
+        instance.findSession(null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void findSessionFailsWithEmptySessionId() throws IOException {
+        instance.findSession("");
     }
 
     @Test
