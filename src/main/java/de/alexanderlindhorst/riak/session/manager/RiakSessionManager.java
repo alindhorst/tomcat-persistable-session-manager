@@ -5,11 +5,7 @@ package de.alexanderlindhorst.riak.session.manager;
 
 import java.io.IOException;
 
-import org.apache.catalina.LifecycleException;
-import org.apache.catalina.LifecycleState;
-import org.apache.catalina.Session;
-import org.apache.catalina.SessionEvent;
-import org.apache.catalina.SessionListener;
+import org.apache.catalina.*;
 import org.apache.catalina.session.ManagerBase;
 import org.apache.catalina.session.StandardSession;
 import org.slf4j.Logger;
@@ -108,7 +104,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         PersistableSession session;
         if (!needsRefresh) {
             LOGGER.debug("session id has current jvm route, fetching from local storage");
-            session = (PersistableSession) super.findSession(jvmRouteAgnosticSessionId);
+            session = (PersistableSession) super.findSession(id);
         } else {
             LOGGER.debug("session {} has no or not current jvm route, fetching from service for agnostic id {}", id,
                     jvmRouteAgnosticSessionId);
