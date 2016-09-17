@@ -10,15 +10,7 @@ import java.util.UUID;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionIdListener;
 
-import org.apache.catalina.Context;
-import org.apache.catalina.Engine;
-import org.apache.catalina.LifecycleException;
-import org.apache.catalina.LifecycleState;
-import org.apache.catalina.Manager;
-import org.apache.catalina.Session;
-import org.apache.catalina.SessionEvent;
-import org.apache.catalina.SessionIdGenerator;
-import org.apache.catalina.SessionListener;
+import org.apache.catalina.*;
 import org.apache.catalina.session.StandardSession;
 import org.junit.Before;
 import org.junit.Test;
@@ -154,16 +146,38 @@ public class RiakSessionManagerTest {
         String sessionId = "mySession.host1"; //context gives "host" as jvmroute
         PersistableSession session = new PersistableSession(instance);
         session.setId("mySession.host"); //container sets this to "new" route
+        session.setNew(true);
+        session.setValid(true);
         session.addSessionListener(sessionListener);
         when(backendService.getSession(any(PersistableSession.class), eq(sessionId))).thenReturn(session);
         when(backendService.getSession(any(PersistableSession.class), eq("mySession"))).thenReturn(session);
-        when(context.getApplicationEventListeners()).thenReturn(new Object[]{sessionIdListener});
+        when(context.getApplicationEventListeners()).thenReturn(new Object[]{sessionIdListener, sessionListener});
         instance.findSession(sessionId);
 
+        verify(sessionListener).sessionEvent(sessionEventCaptor.capture());
+        assertThat(sessionEventCaptor.getValue().getType(), is(SESSION_CREATED_EVENT));
+        assertThat(sessionEventCaptor.getValue().getSession().getId(), is("mySession.host"));
         verify(sessionIdListener).sessionIdChanged(httpSessionEventCaptor.capture(), any(String.class));
         assertThat(session.getIdInternal(), is("mySession"));
         assertThat(session.getId(), is("mySession.host"));
         assertThat(httpSessionEventCaptor.getValue().getSession().getId(), is("mySession.host"));
+    }
+
+    @Test
+    public void findSessionAttemptsToSignalNewSessionWithoutListenersWhenGoingToPersisence() throws IOException {
+        String sessionId = "mySession.host1"; //context gives "host" as jvmroute
+        PersistableSession session = new PersistableSession(instance);
+        session.setId("mySession.host"); //container sets this to "new" route
+        session.setNew(true);
+        session.setValid(true);
+        session.addSessionListener(sessionListener);
+        when(backendService.getSession(any(PersistableSession.class), eq(sessionId))).thenReturn(session);
+        when(backendService.getSession(any(PersistableSession.class), eq("mySession"))).thenReturn(session);
+        when(context.getApplicationEventListeners()).thenReturn(null);
+        instance.findSession(sessionId);
+
+        verify(sessionListener, never()).sessionEvent(any(SessionEvent.class));
+        verify(sessionIdListener, never()).sessionIdChanged(any(HttpSessionEvent.class), any(String.class));
     }
 
     @Test
