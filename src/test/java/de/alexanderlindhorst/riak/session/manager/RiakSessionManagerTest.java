@@ -158,7 +158,7 @@ public class RiakSessionManagerTest {
         assertThat(sessionEventCaptor.getValue().getType(), is(SESSION_CREATED_EVENT));
         assertThat(sessionEventCaptor.getValue().getSession().getId(), is("mySession.host"));
         verify(sessionIdListener).sessionIdChanged(httpSessionEventCaptor.capture(), any(String.class));
-        assertThat(session.getIdInternal(), is("mySession"));
+        assertThat(session.getPersistenceKey(), is("mySession"));
         assertThat(session.getId(), is("mySession.host"));
         assertThat(httpSessionEventCaptor.getValue().getSession().getId(), is("mySession.host"));
     }
@@ -201,7 +201,7 @@ public class RiakSessionManagerTest {
         instance.findSession(sessionId);
 
         verify(sessionListener, never()).sessionEvent((SessionEvent) any());
-        assertThat(session.getIdInternal(), is("mySession"));
+        assertThat(session.getPersistenceKey(), is("mySession"));
         assertThat(session.getId(), is("mySession"));
     }
 

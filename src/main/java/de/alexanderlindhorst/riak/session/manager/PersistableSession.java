@@ -22,8 +22,7 @@ public class PersistableSession extends StandardSession {
         super(manager);
     }
 
-    @Override
-    public String getIdInternal() {
+    public String getPersistenceKey() {
         return calculateJvmRouteAgnosticSessionId(getId());
     }
 

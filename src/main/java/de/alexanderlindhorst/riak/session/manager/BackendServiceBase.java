@@ -19,7 +19,7 @@ public abstract class BackendServiceBase implements BackendService {
 
     @Override
     public final void persistSession(PersistableSession session) {
-        persistSessionInternal(session.getIdInternal(), serializeSession(session));
+        persistSessionInternal(session.getPersistenceKey(), serializeSession(session));
         session.setDirty(false);
     }
 
@@ -34,7 +34,7 @@ public abstract class BackendServiceBase implements BackendService {
 
     @Override
     public final void deleteSession(PersistableSession session) {
-        deleteSessionInternal(session.getIdInternal());
+        deleteSessionInternal(session.getPersistenceKey());
     }
 
     protected abstract void deleteSessionInternal(String sessionId);
