@@ -96,6 +96,34 @@ public class RiakSessionManagerTest {
     }
 
     @Test
+    public void createSessionSignalsNewSession() throws IOException {
+        String sessionId = "mySession.host1"; //context gives "host" as jvmroute
+        when(backendService.getSession(any(PersistableSession.class), any(String.class))).thenReturn(null);
+        when(context.getApplicationEventListeners()).thenReturn(new Object[]{sessionIdListener, sessionListener});
+        instance.findSession(sessionId);
+
+        verify(sessionListener).sessionEvent(sessionEventCaptor.capture());
+        SessionEvent event = sessionEventCaptor.getValue();
+        PersistableSession session = (PersistableSession) event.getSession();
+        assertThat(event.getType(), is(SESSION_CREATED_EVENT));
+        assertThat(session.getId(), is("mySession.host"));
+        assertThat(session.getPersistenceKey(), is("mySession"));
+        assertThat(session.getId(), is("mySession.host"));
+    }
+
+    @Test
+    public void createSessionAttemptsToSignalNewSessionWithoutListeners() throws IOException {
+
+        String sessionId = "mySession.host1"; //context gives "host" as jvmroute
+        when(backendService.getSession(any(PersistableSession.class), any(String.class))).thenReturn(null);
+        when(context.getApplicationEventListeners()).thenReturn(null);
+        instance.findSession(sessionId);
+
+        verify(sessionListener, never()).sessionEvent(any(SessionEvent.class));
+        verify(sessionIdListener, never()).sessionIdChanged(any(HttpSessionEvent.class), any(String.class));
+    }
+
+    @Test
     public void findSessionRetrievesFromServiceIfNoContextRouteGiven() throws IOException, IllegalArgumentException,
             IllegalAccessException, NoSuchFieldException {
         Engine engineLocal = mock(Engine.class);
@@ -139,45 +167,6 @@ public class RiakSessionManagerTest {
         String sessionId = "mySession";
         instance.findSession(sessionId);
         verify(backendService).getSession(any(PersistableSession.class), eq("mySession"));
-    }
-
-    @Test
-    public void findSessionSignalsNewSessionWhenGoingToPersistenceAndDifferentJVMRoute() throws IOException {
-        String sessionId = "mySession.host1"; //context gives "host" as jvmroute
-        PersistableSession session = new PersistableSession(instance);
-        session.setId("mySession.host"); //container sets this to "new" route
-        session.setNew(true);
-        session.setValid(true);
-        session.addSessionListener(sessionListener);
-        when(backendService.getSession(any(PersistableSession.class), eq(sessionId))).thenReturn(session);
-        when(backendService.getSession(any(PersistableSession.class), eq("mySession"))).thenReturn(session);
-        when(context.getApplicationEventListeners()).thenReturn(new Object[]{sessionIdListener, sessionListener});
-        instance.findSession(sessionId);
-
-        verify(sessionListener).sessionEvent(sessionEventCaptor.capture());
-        assertThat(sessionEventCaptor.getValue().getType(), is(SESSION_CREATED_EVENT));
-        assertThat(sessionEventCaptor.getValue().getSession().getId(), is("mySession.host"));
-        verify(sessionIdListener).sessionIdChanged(httpSessionEventCaptor.capture(), any(String.class));
-        assertThat(session.getPersistenceKey(), is("mySession"));
-        assertThat(session.getId(), is("mySession.host"));
-        assertThat(httpSessionEventCaptor.getValue().getSession().getId(), is("mySession.host"));
-    }
-
-    @Test
-    public void findSessionAttemptsToSignalNewSessionWithoutListenersWhenGoingToPersisence() throws IOException {
-        String sessionId = "mySession.host1"; //context gives "host" as jvmroute
-        PersistableSession session = new PersistableSession(instance);
-        session.setId("mySession.host"); //container sets this to "new" route
-        session.setNew(true);
-        session.setValid(true);
-        session.addSessionListener(sessionListener);
-        when(backendService.getSession(any(PersistableSession.class), eq(sessionId))).thenReturn(session);
-        when(backendService.getSession(any(PersistableSession.class), eq("mySession"))).thenReturn(session);
-        when(context.getApplicationEventListeners()).thenReturn(null);
-        instance.findSession(sessionId);
-
-        verify(sessionListener, never()).sessionEvent(any(SessionEvent.class));
-        verify(sessionIdListener, never()).sessionIdChanged(any(HttpSessionEvent.class), any(String.class));
     }
 
     @Test

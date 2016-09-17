@@ -74,6 +74,8 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         session.setDirty(true);
         backendService.persistSession(session);
         session.addSessionListener(this);
+        add(session);
+        fireSessionCreated(session);
         return session;
     }
 
@@ -106,26 +108,25 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
             LOGGER.debug("session id has current jvm route, fetching from local storage");
             session = (PersistableSession) super.findSession(id);
         } else {
+            String newId;
+            if (!isNullOrEmpty(contextJvmRoute)) {
+                newId = jvmRouteAgnosticSessionId + "." + contextJvmRoute;
+            } else {
+                newId = jvmRouteAgnosticSessionId;
+            }
             LOGGER.debug("session {} has no or not current jvm route, fetching from service for agnostic id {}", id,
                     jvmRouteAgnosticSessionId);
-            session = getSessionShell(id);
-            session = backendService.getSession(session, jvmRouteAgnosticSessionId);
-            if (session != null) {
+            session = backendService.getSession(getSessionShell(), jvmRouteAgnosticSessionId);
+            if (session == null) {
+                LOGGER.warn("Creating a new session for passed in id {} as nothing could be found in the backend.\n"
+                        + "This might be an exploitation attempt.");
+                session = (PersistableSession) createSession(newId);
+            } else {
                 LOGGER.debug("session found, setting flags");
                 //reinitialize transient fields
                 session.setManager(this);
-                session.setValid(true);
                 addSessionListenerUniquelyTo(session);
-                String newId = null;
-                if (!isNullOrEmpty(contextJvmRoute)) {
-                    newId = jvmRouteAgnosticSessionId + "." + contextJvmRoute;
-                } else {
-                    newId = jvmRouteAgnosticSessionId;
-                }
-                //overwrite with newly created version
-                if (session.isNew()) {
-                    fireSessionCreated(session);
-                }
+
                 LOGGER.debug("setting session id to new id {}", newId);
                 changeSessionId(session, newId);
                 add(session);
@@ -134,18 +135,9 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         return session;
     }
 
-    private PersistableSession getSessionShell(String id) throws IOException {
-        PersistableSession session;
-        session = (PersistableSession) super.findSession(id);
-        if (session != null) {
-            //rethink removal
-            super.remove(session);
-            session.recycle();
-            session.setNew(false);
-        } else {
-            session = new PersistableSession(this);
-            session.setNew(true);
-        }
+    private PersistableSession getSessionShell() throws IOException {
+        PersistableSession session = new PersistableSession(this);
+        session.setNew(true);
         session.setValid(true);
         return session;
     }
@@ -195,16 +187,16 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         LOGGER.debug("event {}", event);
         PersistableSession session = (PersistableSession) event.getSession();
         switch (event.getType()) {
-        case SESSION_DESTROYED_EVENT:
-            remove(session);
-            break;
-        case SESSION_CREATED_EVENT:
-        case SESSION_ATTRIBUTE_SET:
-            session.setDirty(true);
-            storeSession(session);
-            break;
-        default:
-            throw new AssertionError("Unknown event type: " + event.getType());
+            case SESSION_DESTROYED_EVENT:
+                remove(session);
+                break;
+            case SESSION_CREATED_EVENT:
+            case SESSION_ATTRIBUTE_SET:
+                session.setDirty(true);
+                storeSession(session);
+                break;
+            default:
+                throw new AssertionError("Unknown event type: " + event.getType());
         }
     }
 
