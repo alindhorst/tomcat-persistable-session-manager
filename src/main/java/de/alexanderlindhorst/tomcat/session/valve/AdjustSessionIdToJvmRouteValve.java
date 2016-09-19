@@ -46,7 +46,7 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
             return;
         }
 
-        String sessionId = (String) request.getAttribute(sessionIdAttribute);
+        String sessionId = request.getRequestedSessionId();
         if (isNullOrEmpty(sessionId) || sessionId.equals(session.getId())) {
             //no change, continue normally
             getNext().invoke(request, response);
