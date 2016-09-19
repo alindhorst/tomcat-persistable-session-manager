@@ -26,8 +26,6 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
 
     private static final String ORIGINAL_ID_ATTRIBUTE = "org.apache.catalina.ha.session.JvmRouteOrignalSessionID";
     private static final Logger LOGGER = LoggerFactory.getLogger(AdjustSessionIdToJvmRouteValve.class);
-    protected String sessionIdAttribute = "org.apache.catalina.ha.session.JvmRouteOrignalSessionID";
-
 
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
@@ -38,7 +36,7 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
             getNext().invoke(request, response);
             return;
         }
-        
+
         //if no session, just continue normally
         HttpSession session = request.getSession(false);
         if (session == null) {
@@ -55,7 +53,7 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
 
         //there was a session in the request and it differs from what the request has
         request.changeSessionId(session.getId());
-        request.setAttribute(sessionIdAttribute, session.getId());
+        request.setAttribute(ORIGINAL_ID_ATTRIBUTE, session.getId());
 
         /*
          Update jvm route in request and pass on
