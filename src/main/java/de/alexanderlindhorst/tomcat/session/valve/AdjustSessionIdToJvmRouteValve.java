@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import de.alexanderlindhorst.riak.session.manager.RiakSessionManager;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static net.sf.cglib.proxy.Enhancer.create;
 
 /**
  * @author lindhrst (original author)
@@ -54,10 +55,14 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
         //there was a session in the request and it differs from what the request has
         request.changeSessionId(session.getId());
         request.setAttribute(ORIGINAL_ID_ATTRIBUTE, session.getId());
-
         /*
          Update jvm route in request and pass on
          */
-        getNext().invoke(request, response);
+        if (!request.isRequestedSessionIdFromURL()) {
+            //if session comes from somewhere else enforce consistent results for encodeURL
+            getNext().invoke((Request) create(Request.class, new RequestProxy(request, session.getId())), response);
+        } else {
+            getNext().invoke(request, response);
+        }
     }
 }

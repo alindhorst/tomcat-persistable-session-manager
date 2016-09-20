@@ -14,7 +14,6 @@ import org.apache.catalina.Valve;
 import org.apache.catalina.connector.Request;
 import org.apache.catalina.connector.Response;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -55,7 +54,7 @@ public class AdjustSessionIdToJvmRouteValveTest {
 
     @Before
     public void setup() {
-        coyoteRequest=new org.apache.coyote.Request();
+        coyoteRequest = new org.apache.coyote.Request();
         valve = new AdjustSessionIdToJvmRouteValve();
         valve.setNext(next);
         when(request.getContext()).thenReturn(context);
@@ -97,20 +96,40 @@ public class AdjustSessionIdToJvmRouteValveTest {
     }
 
     @Test
-    @Ignore("logic changed, runtime tests pending, ignored; change invoked instance")
-    public void requestWithDifferentRouteAsManagerCausesSessionFetch() throws IOException, ServletException {
+    public void sessionIDFromCookieByPassesOriginalRequest() throws IOException, ServletException {
+        String originalSession = "id.route2";
+        String updatedSession = "id.route";
         when(context.getManager()).thenReturn(wellKnownManager);
         when(wellKnownManager.getJvmRoute()).thenReturn("route");
+        when(session.getId()).thenReturn(updatedSession);
         when(wellKnownManager.findSession(anyString())).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session); //to mimick: manager returns updated session
         when(request.isRequestedSessionIdFromURL()).thenReturn(Boolean.FALSE);
         when(request.isRequestedSessionIdFromCookie()).thenReturn(Boolean.TRUE);
-        when(request.getCookies()).thenReturn(new Cookie[]{new Cookie("JSESSIONID", "id.route2")});
-        when(request.getCoyoteRequest()).thenReturn(coyoteRequest);
-        coyoteRequest.scheme().setString("http");
+        when(request.getRequestedSessionId()).thenReturn(originalSession);
+        when(request.getCookies()).thenReturn(new Cookie[]{new Cookie("JSESSIONID", originalSession)});
 
         valve.invoke(request, response);
 
-        verify(wellKnownManager).add(session);
-        verify(next,never()).invoke(request, response);
+        verify(next, never()).invoke(request, response);
+    }
+
+    @Test
+    public void sessionIDFromURLUsesOriginalRequest() throws IOException, ServletException {
+        String originalSession = "id.route2";
+        String updatedSession = "id.route";
+        when(context.getManager()).thenReturn(wellKnownManager);
+        when(wellKnownManager.getJvmRoute()).thenReturn("route");
+        when(session.getId()).thenReturn(updatedSession);
+        when(wellKnownManager.findSession(anyString())).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session); //to mimick: manager returns updated session
+        when(request.isRequestedSessionIdFromURL()).thenReturn(Boolean.TRUE);
+        when(request.isRequestedSessionIdFromCookie()).thenReturn(Boolean.FALSE);
+        when(request.getRequestedSessionId()).thenReturn(originalSession);
+        when(request.getCookies()).thenReturn(new Cookie[]{new Cookie("JSESSIONID", originalSession)});
+
+        valve.invoke(request, response);
+
+        verify(next).invoke(request, response);
     }
 }
