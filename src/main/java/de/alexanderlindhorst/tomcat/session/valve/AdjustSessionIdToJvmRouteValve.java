@@ -46,21 +46,22 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
         }
 
         String sessionId = request.getRequestedSessionId();
-        if (isNullOrEmpty(sessionId) || sessionId.equals(session.getId())) {
+        if (isNullOrEmpty(sessionId)) {
             //no change, continue normally
             getNext().invoke(request, response);
             return;
         }
 
-        //there was a session in the request and it differs from what the request has
-        request.changeSessionId(session.getId());
-        request.setAttribute(ORIGINAL_ID_ATTRIBUTE, session.getId());
-        /*
-         Update jvm route in request and pass on
-         */
-        if (!request.isRequestedSessionIdFromURL()) {
+        if (!sessionId.equals(session.getId())) {
+            //there was a session in the request and it differs from what the request has -> adjust it
+            request.changeSessionId(session.getId());
+            request.setAttribute(ORIGINAL_ID_ATTRIBUTE, session.getId());
+        }
+
+        //if sesison id comes from cookie make sure URL encoding works consistently
+        if (request.isRequestedSessionIdFromCookie()) {
             //if session comes from somewhere else enforce consistent results for encodeURL
-            getNext().invoke((Request) create(Request.class, new RequestProxy(request, session.getId())), response);
+            getNext().invoke(request, (Response) create(Response.class, new ResponseProxy(response, session.getId())));
         } else {
             getNext().invoke(request, response);
         }

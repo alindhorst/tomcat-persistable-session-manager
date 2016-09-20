@@ -7,6 +7,7 @@ import java.lang.reflect.Method;
 import java.util.regex.Matcher;
 
 import org.apache.catalina.connector.Request;
+import org.apache.catalina.connector.Response;
 
 import net.sf.cglib.proxy.InvocationHandler;
 
@@ -20,17 +21,17 @@ import static de.alexanderlindhorst.tomcat.session.valve.RequestUtils.URI_PATTER
  *
  * @author lindhrst (original author)
  */
-class RequestProxy implements InvocationHandler {
+class ResponseProxy implements InvocationHandler {
 
     private final String sessionId;
-    private final Request request;
+    private final Response response;
 
-    RequestProxy(Request request, String sessionId) {
-        this.request = request;
+    ResponseProxy(Response response, String sessionId) {
+        this.response = response;
         this.sessionId = sessionId;
     }
 
-    private String encodeURL(String url, String sessionId) {
+    private String encodeURL(String url) {
         return adjustUrlString(url, sessionId);
     }
 
@@ -58,9 +59,9 @@ class RequestProxy implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         if (method.getName().equals("encodeURL")) {
-            return encodeURL((String) args[0], sessionId);
+            return encodeURL((String) args[0]);
         }
 
-        return method.invoke(request, args);
+        return method.invoke(response, args);
     }
 }
