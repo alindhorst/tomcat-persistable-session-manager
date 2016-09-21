@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import de.alexanderlindhorst.riak.session.manager.RiakSessionManager;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
-import static net.sf.cglib.proxy.Enhancer.create;
 
 /**
  * @author lindhrst (original author)
@@ -45,25 +44,16 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
             return;
         }
 
-        String sessionId = request.getRequestedSessionId();
-        if (isNullOrEmpty(sessionId)) {
-            //no change, continue normally
-            getNext().invoke(request, response);
-            return;
+        String requestSessionId = request.getRequestedSessionId();
+        if (!isNullOrEmpty(requestSessionId)) {
+            //there is a session id in the request that we potentially need to modify
+            if (!requestSessionId.equals(session.getId())) {
+                //the session manager comes back with a different session id than found in the request
+                request.changeSessionId(session.getId());
+                request.setAttribute(ORIGINAL_ID_ATTRIBUTE, session.getId());
+            }
         }
 
-        if (!sessionId.equals(session.getId())) {
-            //there was a session in the request and it differs from what the request has -> adjust it
-            request.changeSessionId(session.getId());
-            request.setAttribute(ORIGINAL_ID_ATTRIBUTE, session.getId());
-        }
-
-        //if sesison id comes from cookie make sure URL encoding works consistently
-        if (request.isRequestedSessionIdFromCookie()) {
-            //if session comes from somewhere else enforce consistent results for encodeURL
-            getNext().invoke(request, (Response) create(Response.class, new ResponseProxy(response, session.getId())));
-        } else {
-            getNext().invoke(request, response);
-        }
+        getNext().invoke(request, response);
     }
 }
