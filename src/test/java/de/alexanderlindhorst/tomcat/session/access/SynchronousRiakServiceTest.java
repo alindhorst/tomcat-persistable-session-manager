@@ -1,7 +1,10 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.riak.session.access;
+package de.alexanderlindhorst.tomcat.session.access;
+
+import de.alexanderlindhorst.tomcat.session.access.RiakAccessException;
+import de.alexanderlindhorst.tomcat.session.access.SynchronousRiakService;
 
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
@@ -29,11 +32,11 @@ import com.basho.riak.client.core.query.Location;
 import com.basho.riak.client.core.query.RiakObject;
 import com.basho.riak.client.core.util.BinaryValue;
 
-import de.alexanderlindhorst.riak.session.manager.PersistableSession;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
-import static de.alexanderlindhorst.riak.session.TestUtils.setFieldValueForObject;
+import static de.alexanderlindhorst.tomcat.session.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.tomcat.session.TestUtils.setFieldValueForObject;
 import static java.util.Collections.emptyList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;

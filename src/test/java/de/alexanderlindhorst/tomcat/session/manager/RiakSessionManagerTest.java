@@ -1,7 +1,12 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.riak.session.manager;
+package de.alexanderlindhorst.tomcat.session.manager;
+
+import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.BackendService;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionAttribute;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -21,13 +26,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import de.alexanderlindhorst.riak.session.TestUtils.Parameter;
-import de.alexanderlindhorst.riak.session.access.FakeRiakService;
+import de.alexanderlindhorst.tomcat.session.TestUtils.Parameter;
+import de.alexanderlindhorst.tomcat.session.access.FakeRiakService;
 
-import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
-import static de.alexanderlindhorst.riak.session.TestUtils.invokeMethod;
-import static de.alexanderlindhorst.riak.session.TestUtils.setFieldValueForObject;
-import static de.alexanderlindhorst.riak.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
+import static de.alexanderlindhorst.tomcat.session.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.tomcat.session.TestUtils.invokeMethod;
+import static de.alexanderlindhorst.tomcat.session.TestUtils.setFieldValueForObject;
+import static de.alexanderlindhorst.tomcat.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
 import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 import static org.hamcrest.CoreMatchers.is;

@@ -1,7 +1,9 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.riak.session.manager;
+package de.alexanderlindhorst.tomcat.session.manager;
+
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionAttribute;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

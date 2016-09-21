@@ -1,7 +1,7 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.riak.session.manager;
+package de.alexanderlindhorst.tomcat.session.manager;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -9,7 +9,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.regex.Pattern;
 
-import static de.alexanderlindhorst.riak.session.manager.BackendServiceBase.LOGGER;
+import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.LOGGER;
 
 /**
  * @author lindhrst (original author)

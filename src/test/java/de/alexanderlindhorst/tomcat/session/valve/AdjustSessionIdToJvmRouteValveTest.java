@@ -18,8 +18,8 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import de.alexanderlindhorst.riak.session.manager.PersistableSession;
-import de.alexanderlindhorst.riak.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
+import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.never;

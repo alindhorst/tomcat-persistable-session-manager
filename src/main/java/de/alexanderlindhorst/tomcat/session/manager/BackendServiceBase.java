@@ -1,13 +1,13 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.riak.session.manager;
+package de.alexanderlindhorst.tomcat.session.manager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static de.alexanderlindhorst.riak.session.manager.PersistableSessionUtils.deserializeSessionInto;
-import static de.alexanderlindhorst.riak.session.manager.PersistableSessionUtils.serializeSession;
+import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.deserializeSessionInto;
+import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.serializeSession;
 
 /**
  * @author alindhorst

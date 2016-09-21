@@ -15,7 +15,7 @@ import org.apache.catalina.valves.ValveBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.alexanderlindhorst.riak.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 

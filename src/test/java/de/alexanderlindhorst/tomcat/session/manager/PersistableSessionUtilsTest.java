@@ -1,7 +1,11 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.riak.session.manager;
+package de.alexanderlindhorst.tomcat.session.manager;
+
+import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;

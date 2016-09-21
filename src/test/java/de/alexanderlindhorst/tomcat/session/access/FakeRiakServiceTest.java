@@ -1,7 +1,9 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.riak.session.access;
+package de.alexanderlindhorst.tomcat.session.access;
+
+import de.alexanderlindhorst.tomcat.session.access.FakeRiakService;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -14,12 +16,12 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import de.alexanderlindhorst.riak.session.TestUtils;
-import de.alexanderlindhorst.riak.session.manager.PersistableSession;
-import de.alexanderlindhorst.riak.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.TestUtils;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
+import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
 
-import static de.alexanderlindhorst.riak.session.TestUtils.getFieldValueFromObject;
-import static de.alexanderlindhorst.riak.session.manager.PersistableSessionUtils.serializeSession;
+import static de.alexanderlindhorst.tomcat.session.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.serializeSession;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;

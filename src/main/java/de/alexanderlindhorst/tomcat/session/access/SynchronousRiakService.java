@@ -1,7 +1,7 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.riak.session.access;
+package de.alexanderlindhorst.tomcat.session.access;
 
 import java.net.UnknownHostException;
 import java.util.concurrent.ExecutionException;
@@ -22,7 +22,7 @@ import com.basho.riak.client.core.query.Namespace;
 import com.basho.riak.client.core.query.RiakObject;
 import com.basho.riak.client.core.util.BinaryValue;
 
-import de.alexanderlindhorst.riak.session.manager.BackendServiceBase;
+import de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 
