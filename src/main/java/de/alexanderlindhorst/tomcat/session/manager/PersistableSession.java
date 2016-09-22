@@ -8,14 +8,13 @@ import java.util.regex.Matcher;
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
 
-import static com.google.common.base.Strings.isNullOrEmpty;
-
 /**
  * @author alindhorst
  */
 public class PersistableSession extends StandardSession {
 
     public static final String SESSION_ATTRIBUTE_SET = "SESSION_ATTRIBUTE_SET";
+    private static final long serialVersionUID = 1L;
     private transient boolean dirty = false;
 
     public PersistableSession(Manager manager) {
@@ -45,9 +44,6 @@ public class PersistableSession extends StandardSession {
     }
 
     public static String calculateJvmRouteAgnosticSessionId(String id) {
-        if (isNullOrEmpty(id)) {
-            return null;
-        }
         Matcher matcher = PersistableSessionUtils.SESSION_ID_PATTERN.matcher(id);
         matcher.find();
         return matcher.group("sessionId");
