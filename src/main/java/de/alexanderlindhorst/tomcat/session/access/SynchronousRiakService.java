@@ -4,10 +4,7 @@
 package de.alexanderlindhorst.tomcat.session.access;
 
 import java.net.UnknownHostException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +22,7 @@ import com.basho.riak.client.core.util.BinaryValue;
 import de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * @author alindhorst
@@ -34,6 +32,7 @@ public class SynchronousRiakService extends BackendServiceBase {
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
     private RiakClient client;
     private boolean shuttingDown;
+    private ExecutorService cleanUpThreads = Executors.newSingleThreadExecutor();
 
     @Override
     protected void persistSessionInternal(String sessionId, byte[] bytes) {
@@ -113,6 +112,7 @@ public class SynchronousRiakService extends BackendServiceBase {
                     .build();
             cluster.start();
             client = new RiakClient(cluster);
+            Future<?> worker = cleanUpThreads.submit(new CleanUpWorker());
         } catch (UnknownHostException ex) {
             throw new IllegalStateException("Couldn't configure riak access", ex);
         }
@@ -123,9 +123,27 @@ public class SynchronousRiakService extends BackendServiceBase {
         shuttingDown = true;
         Future<Boolean> shutdown = client.shutdown();
         try {
-            shutdown.get(3, TimeUnit.SECONDS);
+            shutdown.get(3, SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             LOGGER.warn("Problem occured during Riak cluster shutdown", ex);
         }
+        cleanUpThreads.shutdown();
+    }
+
+    private class CleanUpWorker implements Runnable {
+
+        @Override
+        public void run() {
+            LOGGER.debug("CleanUpWorker started");
+            while (!shuttingDown) {
+                LOGGER.debug("CleanUpWorker working");
+                try {
+                    SECONDS.sleep(10);
+                } catch (InterruptedException ex) {
+                    LOGGER.warn("CleanUpWorker's sleep interrupted");
+                }
+            }
+        }
+
     }
 }
