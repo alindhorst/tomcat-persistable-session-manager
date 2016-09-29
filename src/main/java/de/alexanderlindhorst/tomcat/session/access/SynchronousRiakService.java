@@ -4,7 +4,10 @@
 package de.alexanderlindhorst.tomcat.session.access;
 
 import java.net.UnknownHostException;
-import java.util.concurrent.*;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,12 +34,10 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
     private RiakClient client;
-    private boolean shuttingDown;
-    private ExecutorService cleanUpThreads = Executors.newSingleThreadExecutor();
 
     @Override
     protected void persistSessionInternal(String sessionId, byte[] bytes) {
-        if (shuttingDown) {
+        if (isShuttingDown()) {
             throw new RiakAccessException("Service is shutting down", null);
         }
         LOGGER.debug("persistSessionInternal {}", sessionId);
@@ -55,7 +56,7 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     @Override
     protected byte[] getSessionInternal(String sessionId) {
-        if (shuttingDown) {
+        if (isShuttingDown()) {
             throw new RiakAccessException("Service is shutting down", null);
         }
         try {
@@ -74,7 +75,7 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     @Override
     protected void deleteSessionInternal(String sessionId) {
-        if (shuttingDown) {
+        if (isShuttingDown()) {
             throw new RiakAccessException("Service is shutting down", null);
         }
         try {
@@ -89,6 +90,7 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     @Override
     public void init() {
+        super.init();
         if (isNullOrEmpty(getBackendAddress())) {
             throw new IllegalArgumentException("backend address must not be null or empty");
         }
@@ -112,7 +114,6 @@ public class SynchronousRiakService extends BackendServiceBase {
                     .build();
             cluster.start();
             client = new RiakClient(cluster);
-            Future<?> worker = cleanUpThreads.submit(new CleanUpWorker());
         } catch (UnknownHostException ex) {
             throw new IllegalStateException("Couldn't configure riak access", ex);
         }
@@ -120,30 +121,22 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     @Override
     public void shutdown() {
-        shuttingDown = true;
+        super.shutdown();
         Future<Boolean> shutdown = client.shutdown();
         try {
             shutdown.get(3, SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             LOGGER.warn("Problem occured during Riak cluster shutdown", ex);
         }
-        cleanUpThreads.shutdown();
     }
 
-    private class CleanUpWorker implements Runnable {
+    @Override
+    public List<String> removeExpiredSessions() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
 
-        @Override
-        public void run() {
-            LOGGER.debug("CleanUpWorker started");
-            while (!shuttingDown) {
-                LOGGER.debug("CleanUpWorker working");
-                try {
-                    SECONDS.sleep(10);
-                } catch (InterruptedException ex) {
-                    LOGGER.warn("CleanUpWorker's sleep interrupted");
-                }
-            }
-        }
-
+    @Override
+    public List<String> getExpiredSessionIds() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

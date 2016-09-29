@@ -3,6 +3,7 @@
  */
 package de.alexanderlindhorst.tomcat.session.access;
 
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -40,11 +41,23 @@ public class FakeRiakService extends BackendServiceBase {
 
     @Override
     public void init() {
+        super.init();
         LOGGER.debug("init");
     }
 
     @Override
     public void shutdown() {
+        super.shutdown();
         LOGGER.debug("This implementation has no tasks during shutdown");
+    }
+
+    @Override
+    public List<String> removeExpiredSessions() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public List<String> getExpiredSessionIds() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }
