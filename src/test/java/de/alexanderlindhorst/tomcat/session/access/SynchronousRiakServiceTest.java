@@ -3,22 +3,23 @@
  */
 package de.alexanderlindhorst.tomcat.session.access;
 
-import de.alexanderlindhorst.tomcat.session.access.RiakAccessException;
-import de.alexanderlindhorst.tomcat.session.access.SynchronousRiakService;
-
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.core.FutureOperation;
@@ -37,6 +38,7 @@ import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.getFieldValueFromObject;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.setFieldValueForObject;
+import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
 import static java.util.Collections.emptyList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -251,6 +253,43 @@ public class SynchronousRiakServiceTest {
     public void serviceShutDownMakeSessionDeletionFail() {
         service.shutdown();
         service.deleteSessionInternal("sessionId");
+    }
+
+    @Test
+    public void getCleanUpRunIntervalSecondsGetSetValue() {
+        service.setCleanUpRunIntervalSeconds(15);
+        assertThat(service.getCleanUpRunIntervalSeconds(), is(15l));
+    }
+
+    @Test
+    public void getSessionManagementLoggerReturnsSetValue() {
+        Logger logger = LoggerFactory.getLogger("blub");
+        service.setSessionManagementLogger(logger);
+
+        assertThat(service.getSessionManagementLogger().getName(), is("blub"));
+    }
+
+    @Test
+    @Ignore("some riak madness")
+    public void getExpiredSessionIdsGivesEmptySetForSESSION_NEVER_EXPIRES() {
+        service.persistSessionInternal("sessionId", new byte[]{1, 2});
+        service.setSessionExpiryThreshold(SESSIONS_NEVER_EXPIRE);
+
+        List<String> expiredSessionIds = service.getExpiredSessionIds();
+
+        assertThat(expiredSessionIds.isEmpty(), is(true));
+    }
+
+    @Test
+    @Ignore("Not yet supported")
+    public void getExpiredSessionIdsFetchesExpiredSessions() {
+        service.persistSessionInternal("sessionId", new byte[]{1, 2});
+        service.setSessionExpiryThreshold(SESSIONS_NEVER_EXPIRE);
+
+        List<String> expiredSessionIds = service.getExpiredSessionIds();
+
+        assertThat(expiredSessionIds.isEmpty(), is(false));
+        assertThat(expiredSessionIds.get(0), is("sessionId"));
     }
 
     @Test

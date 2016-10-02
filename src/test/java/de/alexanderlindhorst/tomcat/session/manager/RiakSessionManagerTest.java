@@ -3,11 +3,6 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
-import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
-import de.alexanderlindhorst.tomcat.session.manager.BackendService;
-import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
-import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionAttribute;
-
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.UUID;
@@ -73,6 +68,18 @@ public class RiakSessionManagerTest {
         when(context.getParent()).thenReturn(engine);
         when(engine.getJvmRoute()).thenReturn("host");
         when(context.getName()).thenReturn("/mycontext");
+    }
+
+    @Test
+    public void propertiesCanBeReadBackAsSet() {
+        instance.setServiceCleanUpRunIntervalSeconds(15);
+        assertThat(instance.getServiceCleanUpRunIntervalSeconds(), is(15l));
+
+        instance.setServiceImplementationClassName("blub");
+        assertThat(instance.getServiceImplementationClassName(), is("blub"));
+
+        instance.setServiceSessionExpiryThreshold(17000);
+        assertThat(instance.getServiceSessionExpiryThreshold(), is(17000l));
     }
 
     @Test
