@@ -4,6 +4,7 @@
 package de.alexanderlindhorst.tomcat.session.access;
 
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -137,6 +138,9 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     @Override
     public List<String> getExpiredSessionIds() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        if (getSessionExpiryThreshold() != -1) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+        return Collections.<String>emptyList();
     }
 }

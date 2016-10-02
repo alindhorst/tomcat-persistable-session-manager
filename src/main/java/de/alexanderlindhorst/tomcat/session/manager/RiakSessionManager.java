@@ -28,6 +28,8 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
     private BackendService backendService;
     private String serviceImplementationClassName;
     private String serviceBackendAddress;
+    private long serviceSessionExpiryThreshold = -1;
+    private long serviceCleanUpRunIntervalSeconds = 10;
 
     public String getServiceImplementationClassName() {
         return serviceImplementationClassName;
@@ -45,6 +47,22 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         this.serviceBackendAddress = serviceBackendAddress;
     }
 
+    public long getServiceSessionExpiryThreshold() {
+        return serviceSessionExpiryThreshold;
+    }
+
+    public void setServiceSessionExpiryThreshold(long serviceSessionExpiryThreshold) {
+        this.serviceSessionExpiryThreshold = serviceSessionExpiryThreshold;
+    }
+
+    public long getServiceCleanUpRunIntervalSeconds() {
+        return serviceCleanUpRunIntervalSeconds;
+    }
+
+    public void setServiceCleanUpRunIntervalSeconds(long serviceCleanUpRunIntervalSeconds) {
+        this.serviceCleanUpRunIntervalSeconds = serviceCleanUpRunIntervalSeconds;
+    }
+
     @Override
     protected void initInternal() throws LifecycleException {
         LOGGER.debug("initInternal called");
@@ -52,6 +70,9 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         try {
             backendService = (BackendService) Class.forName(serviceImplementationClassName).newInstance();
             backendService.setBackendAddress(serviceBackendAddress);
+            backendService.setSessionManagementLogger(LOGGER);
+            backendService.setCleanUpRunIntervalSeconds(serviceCleanUpRunIntervalSeconds);
+            backendService.setSessionExpiryThreshold(serviceSessionExpiryThreshold);
             backendService.init();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException ex) {
             throw new LifecycleException(ex);

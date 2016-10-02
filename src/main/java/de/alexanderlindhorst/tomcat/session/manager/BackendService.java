@@ -5,24 +5,32 @@ package de.alexanderlindhorst.tomcat.session.manager;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+
 /**
  * @author alindhorst
  */
 public interface BackendService {
 
-    public void persistSession(PersistableSession session);
+    void persistSession(PersistableSession session);
 
-    public List<String> removeExpiredSessions();
+    List<String> removeExpiredSessions();
 
-    public PersistableSession getSession(PersistableSession emptyShell, String id);
+    PersistableSession getSession(PersistableSession emptyShell, String id);
 
-    public void deleteSession(PersistableSession session);
+    void deleteSession(PersistableSession session);
 
-    public void setBackendAddress(String backendAddress);
+    void setBackendAddress(String backendAddress);
 
-    public List<String> getExpiredSessionIds();
+    List<String> getExpiredSessionIds();
 
-    public void init();
+    void init();
 
     void shutdown();
+
+    void setCleanUpRunIntervalSeconds(long cleanUpRunIntervalSeconds);
+
+    void setSessionExpiryThreshold(long sessionExpiryThresholdMilliSeconds);
+
+    void setSessionManagementLogger(Logger sessionManagementLogger);
 }

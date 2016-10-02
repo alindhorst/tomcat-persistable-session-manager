@@ -3,9 +3,8 @@
  */
 package de.alexanderlindhorst.tomcat.session.access;
 
-import de.alexanderlindhorst.tomcat.session.access.FakeRiakService;
-
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.catalina.Context;
@@ -20,8 +19,12 @@ import de.alexanderlindhorst.tomcat.session.TestUtils;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
 
+import static com.google.common.collect.Maps.newHashMap;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.tomcat.session.TestUtils.setFieldValueForObject;
+import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.serializeSession;
+import static java.lang.System.currentTimeMillis;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
@@ -142,5 +145,85 @@ public class FakeRiakServiceTest {
     @Test
     public void initDoesNotThrowException() {
         instance.init();
+    }
+
+    @Test
+    public void getExpiredSessionIdsReturnsEmptyListForSESSIONS_NEVER_EXPIRE() {
+        List<String> expiredSessionIds = instance.getExpiredSessionIds();
+        assertThat(expiredSessionIds.isEmpty(), is(true));
+    }
+
+    @Test
+    public void getExpiredSessionIdsReturnsExpiredSessionIDs() throws IllegalArgumentException, IllegalAccessException,
+            NoSuchFieldException {
+        Map<String, byte[]> sessionStore = newHashMap();
+        sessionStore.put("1", new byte[0]);
+        sessionStore.put("2", new byte[0]);
+        sessionStore.put("3", new byte[0]);
+        setFieldValueForObject(instance, "sessionStore", sessionStore);
+        Map<String, Long> lastAccessed = newHashMap();
+        lastAccessed.put("1", currentTimeMillis());
+        lastAccessed.put("2", currentTimeMillis() - 10000);
+        lastAccessed.put("3", currentTimeMillis() - 100000);
+        setFieldValueForObject(instance, "lastAccessed", lastAccessed);
+        instance.setSessionExpiryThreshold(30000);
+
+        List<String> expiredSessionIds = instance.getExpiredSessionIds();
+
+        assertThat(expiredSessionIds.size(), is(1));
+        assertThat(expiredSessionIds.get(0), is("3"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void removeExpiredSessionsRemovesNothingForSESSIONS_NEVER_EXPIRE() throws IllegalArgumentException,
+            IllegalAccessException, NoSuchFieldException {
+        Map<String, byte[]> sessionStore = newHashMap();
+        sessionStore.put("1", new byte[0]);
+        sessionStore.put("2", new byte[0]);
+        sessionStore.put("3", new byte[0]);
+        setFieldValueForObject(instance, "sessionStore", sessionStore);
+        Map<String, Long> lastAccessed = newHashMap();
+        lastAccessed.put("1", currentTimeMillis());
+        lastAccessed.put("2", currentTimeMillis() - 10000);
+        lastAccessed.put("3", currentTimeMillis() - 100000);
+        setFieldValueForObject(instance, "lastAccessed", lastAccessed);
+        instance.setSessionExpiryThreshold(SESSIONS_NEVER_EXPIRE);
+
+        List<String> removedSessions = instance.removeExpiredSessions();
+        Map<String, byte[]> sessionStoreReadBack = (Map<String, byte[]>) getFieldValueFromObject(instance,
+                "sessionStore");
+        Map<String, Long> lastAccessReadBack = (Map<String, Long>) getFieldValueFromObject(instance, "lastAccessed");
+
+        assertThat(removedSessions.isEmpty(), is(true));
+        assertThat(sessionStoreReadBack.size(), is(3));
+        assertThat(lastAccessReadBack.size(), is(3));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void removeExpiredSessionsRemovesExpiredSessionsOnly() throws IllegalArgumentException,
+            IllegalAccessException, NoSuchFieldException {
+        Map<String, byte[]> sessionStore = newHashMap();
+        sessionStore.put("1", new byte[0]);
+        sessionStore.put("2", new byte[0]);
+        sessionStore.put("3", new byte[0]);
+        setFieldValueForObject(instance, "sessionStore", sessionStore);
+        Map<String, Long> lastAccessed = newHashMap();
+        lastAccessed.put("1", currentTimeMillis());
+        lastAccessed.put("2", currentTimeMillis() - 10000);
+        lastAccessed.put("3", currentTimeMillis() - 100000);
+        setFieldValueForObject(instance, "lastAccessed", lastAccessed);
+        instance.setSessionExpiryThreshold(30000);
+
+        List<String> removedSessions = instance.removeExpiredSessions();
+        Map<String, byte[]> sessionStoreReadBack = (Map<String, byte[]>) getFieldValueFromObject(instance,
+                "sessionStore");
+        Map<String, Long> lastAccessReadBack = (Map<String, Long>) getFieldValueFromObject(instance, "lastAccessed");
+
+        assertThat(removedSessions.size(), is(1));
+        assertThat(removedSessions.get(0), is("3"));
+        assertThat(sessionStoreReadBack.size(), is(2));
+        assertThat(lastAccessReadBack.size(), is(2));
     }
 }

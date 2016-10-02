@@ -3,6 +3,7 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.deserializeSessionInto;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.serializeSession;
+import static java.lang.String.join;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
@@ -19,10 +21,13 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public abstract class BackendServiceBase implements BackendService {
 
+    public static final long SESSIONS_NEVER_EXPIRE = -1;
     protected static final Logger LOGGER = LoggerFactory.getLogger(BackendServiceBase.class);
+    private Logger sessionManagementLogger = LOGGER;
     private String backendAddress;
-    private long sessionExpiryThreshold = -1;
-    private ExecutorService cleanUpThreads = Executors.newSingleThreadExecutor();
+    private long sessionExpiryThreshold = SESSIONS_NEVER_EXPIRE;
+    private long cleanUpRunIntervalSeconds = 10;
+    private final ExecutorService cleanUpThreads = Executors.newSingleThreadExecutor();
     private boolean shuttingDown;
 
     @Override
@@ -67,12 +72,31 @@ public abstract class BackendServiceBase implements BackendService {
         return backendAddress;
     }
 
+    @Override
     public final void setSessionExpiryThreshold(long sessionExpiryThresholdMilliSeconds) {
         this.sessionExpiryThreshold = sessionExpiryThresholdMilliSeconds;
     }
 
     public final long getSessionExpiryThreshold() {
         return sessionExpiryThreshold;
+    }
+
+    public final long getCleanUpRunIntervalSeconds() {
+        return cleanUpRunIntervalSeconds;
+    }
+
+    @Override
+    public final void setCleanUpRunIntervalSeconds(long cleanUpRunIntervalSeconds) {
+        this.cleanUpRunIntervalSeconds = cleanUpRunIntervalSeconds;
+    }
+
+    public final Logger getSessionManagementLogger() {
+        return sessionManagementLogger;
+    }
+
+    @Override
+    public final void setSessionManagementLogger(Logger sessionManagementLogger) {
+        this.sessionManagementLogger = sessionManagementLogger;
     }
 
     protected final boolean isShuttingDown() {
@@ -87,11 +111,17 @@ public abstract class BackendServiceBase implements BackendService {
             while (!shuttingDown) {
                 LOGGER.debug("CleanUpWorker working");
                 try {
-                    SECONDS.sleep(10);
+                    List<String> removed = removeExpiredSessions();
+                    logDeletedSessions(removed);
+                    SECONDS.sleep(cleanUpRunIntervalSeconds);
                 } catch (InterruptedException ex) {
-                    LOGGER.warn("CleanUpWorker's sleep interrupted");
+                    LOGGER.warn("CleanUpWorker's sleep interrupted", ex);
                 }
             }
+        }
+
+        private void logDeletedSessions(List<String> sessionIds) {
+            sessionManagementLogger.info("Sessions deleted: {}", join(", ", sessionIds));
         }
 
     }

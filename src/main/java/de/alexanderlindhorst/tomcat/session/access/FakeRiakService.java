@@ -3,28 +3,29 @@
  */
 package de.alexanderlindhorst.tomcat.session.access;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase;
 
 import static com.google.common.collect.Maps.newHashMap;
+import static java.lang.System.currentTimeMillis;
+import static java.util.stream.Collectors.toList;
 
 /**
  * @author alindhorst
  */
 public class FakeRiakService extends BackendServiceBase {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("FakeRiakService");
     private final Map<String, byte[]> sessionStore = newHashMap();
+    private final Map<String, Long> lastAccessed = newHashMap();
 
     @Override
     protected void persistSessionInternal(String sessionId, byte[] bytes) {
         LOGGER.debug("Call to persistSessionInternal for session {}", sessionId);
         sessionStore.put(sessionId, bytes);
+        lastAccessed.put(sessionId, currentTimeMillis());
     }
 
     @Override
@@ -53,11 +54,23 @@ public class FakeRiakService extends BackendServiceBase {
 
     @Override
     public List<String> removeExpiredSessions() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        List<String> expiredSessionIds = getExpiredSessionIds();
+        expiredSessionIds.forEach(id -> {
+            sessionStore.remove(id);
+            lastAccessed.remove(id);
+        });
+        return expiredSessionIds;
     }
 
     @Override
     public List<String> getExpiredSessionIds() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        if (getSessionExpiryThreshold() == -1) {
+            return Collections.<String>emptyList();
+        }
+        List<String> ids = lastAccessed.entrySet().stream()
+                .filter(entry -> entry.getValue() < currentTimeMillis() - getSessionExpiryThreshold())
+                .map(entry -> entry.getKey())
+                .collect(toList());
+        return ids;
     }
 }
