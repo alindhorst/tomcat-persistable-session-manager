@@ -46,6 +46,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -70,7 +71,7 @@ public class SynchronousRiakServiceTest {
     @Before
     public void setup() throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException,
             InterruptedException, ExecutionException, TimeoutException {
-        client = new RiakClient(cluster);
+        client = spy(new RiakClient(cluster));
         service = new SynchronousRiakService();
         setFieldValueForObject(service, "client", client);
         when(client.shutdown()).thenReturn(shutdownFuture);
