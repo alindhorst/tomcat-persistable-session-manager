@@ -3,25 +3,28 @@
  */
 package de.alexanderlindhorst.tomcat.session.access;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.commands.indexes.IntIndexQuery;
 import com.basho.riak.client.core.FutureOperation;
 import com.basho.riak.client.core.RiakCluster;
 import com.basho.riak.client.core.RiakFuture;
@@ -30,21 +33,24 @@ import com.basho.riak.client.core.operations.DeleteOperation;
 import com.basho.riak.client.core.operations.FetchOperation;
 import com.basho.riak.client.core.operations.StoreOperation;
 import com.basho.riak.client.core.query.Location;
+import com.basho.riak.client.core.query.Namespace;
 import com.basho.riak.client.core.query.RiakObject;
 import com.basho.riak.client.core.util.BinaryValue;
-
-import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.getFieldValueFromObject;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.setFieldValueForObject;
 import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
+import static java.lang.Boolean.TRUE;
 import static java.util.Collections.emptyList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -58,8 +64,6 @@ public class SynchronousRiakServiceTest {
 
     @Mock
     private RiakCluster cluster;
-    @Mock
-    private PersistableSession session;
     @Mock
     private Future<Boolean> shutdownFuture;
     @Captor
@@ -75,6 +79,7 @@ public class SynchronousRiakServiceTest {
         service = new SynchronousRiakService();
         setFieldValueForObject(service, "client", client);
         when(client.shutdown()).thenReturn(shutdownFuture);
+        when(shutdownFuture.get(3, SECONDS)).thenReturn(TRUE);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -271,10 +276,33 @@ public class SynchronousRiakServiceTest {
     }
 
     @Test
-    @Ignore("some riak madness")
-    public void getExpiredSessionIdsGivesEmptySetForSESSION_NEVER_EXPIRES() {
-        service.persistSessionInternal("sessionId", new byte[]{1, 2});
+    public void getExpiredSessionIdsWontFetchAndGivesEmptySetForSESSION_NEVER_EXPIRES() {
         service.setSessionExpiryThreshold(SESSIONS_NEVER_EXPIRE);
+
+        List<String> expiredSessionIds = service.getExpiredSessionIds();
+
+        assertThat(expiredSessionIds.isEmpty(), is(true));
+        verify(cluster, Mockito.never()).execute(any());
+    }
+
+    @Test
+    public void getExpiredSessionIdsFetchesExpiredSessions() throws ExecutionException, InterruptedException {
+        ArrayList<String> expectedValues = newArrayList("id1", "md5sum1919879", "nonsense");
+        QueryOverride.ResponseOverride response = new QueryOverride.ResponseOverride(newArrayList("id1", "md5sum1919879", "nonsense"));
+        doReturn(response).when(client).execute(any(IntIndexQuery.class));
+        service.setSessionExpiryThreshold(30000);
+
+        List<String> expiredSessionIds = service.getExpiredSessionIds();
+
+        assertThat(expiredSessionIds, is(not(nullValue())));
+        assertThat(expiredSessionIds.size(), is(3));
+        expectedValues.forEach(item -> assertThat(expiredSessionIds.contains(item), is(true)));
+    }
+
+    @Test
+    public void getExpiredSessionIdsGracefullyHandlesInterruptedException() throws ExecutionException, InterruptedException {
+        doThrow(new InterruptedException()).when(client).execute((any(IntIndexQuery.class)));
+        service.setSessionExpiryThreshold(30000);
 
         List<String> expiredSessionIds = service.getExpiredSessionIds();
 
@@ -282,21 +310,56 @@ public class SynchronousRiakServiceTest {
     }
 
     @Test
-    @Ignore("Not yet supported")
-    public void getExpiredSessionIdsFetchesExpiredSessions() {
-        service.persistSessionInternal("sessionId", new byte[]{1, 2});
-        service.setSessionExpiryThreshold(SESSIONS_NEVER_EXPIRE);
+    public void getExpiredSessionIdsGracefullyHandlesExecutionException() throws ExecutionException, InterruptedException {
+        doThrow(new ExecutionException(new RuntimeException("just for the hell of it"))).
+                when(client).execute((any(IntIndexQuery.class)));
+        service.setSessionExpiryThreshold(30000);
 
         List<String> expiredSessionIds = service.getExpiredSessionIds();
 
-        assertThat(expiredSessionIds.isEmpty(), is(false));
-        assertThat(expiredSessionIds.get(0), is("sessionId"));
+        assertThat(expiredSessionIds.isEmpty(), is(true));
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void serviceShutDownGracefullyHandlesException() throws InterruptedException, ExecutionException,
             TimeoutException {
+        //override previously initialized object
+        shutdownFuture = mock(Future.class);
         when(shutdownFuture.get(any(Long.class), any(TimeUnit.class))).thenThrow(new InterruptedException());
         service.shutdown();
+    }
+
+    private static class QueryOverride extends IntIndexQuery {
+
+        private QueryOverride(
+                Init<Long, ?> builder) {
+            super(builder);
+        }
+
+        private static class ResponseOverride extends IntIndexQuery.Response {
+
+            private final List<Entry> entries;
+
+            private ResponseOverride(List<String> returnValues) {
+                super(null, null, null);
+                Namespace ns = new Namespace("SESSIONS");
+                entries = returnValues.stream()
+                        .map(id -> new EntryOverride(new Location(ns, BinaryValue.create(id)), BinaryValue.create(id)))
+                        .collect(Collectors.toList());
+            }
+
+            @Override
+            public List<Entry> getEntries() {
+                return entries;
+            }
+
+            private class EntryOverride extends Entry {
+
+                public EntryOverride(Location riakObjectLocation, BinaryValue indexKey) {
+                    super(riakObjectLocation, indexKey, null);
+                }
+            }
+        }
     }
 }

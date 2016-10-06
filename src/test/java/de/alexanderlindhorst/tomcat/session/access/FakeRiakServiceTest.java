@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.apache.catalina.Context;
 import org.apache.juli.logging.Log;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -51,6 +52,12 @@ public class FakeRiakServiceTest {
         when(context.getLogger()).thenReturn(logger);
         when(logger.isDebugEnabled()).thenReturn(Boolean.FALSE);
         when(manager.getJvmRoute()).thenReturn(jvmRoute);
+    }
+
+    @After
+    public void tearDown() {
+        //mimick regular shutdown
+        instance.shutdown();
     }
     private final String jvmRoute = "myhost-1";
 

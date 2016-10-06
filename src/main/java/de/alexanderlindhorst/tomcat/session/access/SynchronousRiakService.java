@@ -13,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.commands.indexes.IntIndexQuery;
 import com.basho.riak.client.api.commands.kv.DeleteValue;
 import com.basho.riak.client.api.commands.kv.FetchValue;
 import com.basho.riak.client.api.commands.kv.StoreValue;
@@ -21,12 +22,15 @@ import com.basho.riak.client.core.RiakNode;
 import com.basho.riak.client.core.query.Location;
 import com.basho.riak.client.core.query.Namespace;
 import com.basho.riak.client.core.query.RiakObject;
+import com.basho.riak.client.core.query.indexes.LongIntIndex;
 import com.basho.riak.client.core.util.BinaryValue;
 
 import de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static java.lang.System.currentTimeMillis;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toList;
 
 /**
  * @author alindhorst
@@ -34,6 +38,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public class SynchronousRiakService extends BackendServiceBase {
 
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
+    private static final String LAST_ACCESSED = "lastAccessed";
     private RiakClient client;
 
     @Override
@@ -45,6 +50,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         try {
             RiakObject object = new RiakObject().setValue(BinaryValue.create(bytes));
             Location location = new Location(SESSIONS, sessionId);
+            object.getIndexes().getIndex(LongIntIndex.named(LAST_ACCESSED)).add(currentTimeMillis());
             StoreValue storeOp = new StoreValue.Builder(object)
                     .withLocation(location)
                     .build();
@@ -139,7 +145,18 @@ public class SynchronousRiakService extends BackendServiceBase {
     @Override
     public List<String> getExpiredSessionIds() {
         if (getSessionExpiryThreshold() != -1) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            try {
+                long threshold = currentTimeMillis() - getSessionExpiryThreshold();
+                IntIndexQuery query = new IntIndexQuery.Builder(SESSIONS, LAST_ACCESSED, 0l, threshold)
+                        .withMaxResults(1000)
+                        .build();
+                IntIndexQuery.Response response = client.execute(query);
+                return response.getEntries().stream()
+                        .map(entry -> entry.getRiakObjectLocation().getKeyAsString())
+                        .collect(toList());
+            } catch (ExecutionException | InterruptedException ex) {
+                LOGGER.error("Interruption while executing query", ex);
+            }
         }
         return Collections.<String>emptyList();
     }
