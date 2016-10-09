@@ -3,18 +3,11 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.deserializeSessionInto;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.serializeSession;
-import static java.lang.String.join;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * @author alindhorst
@@ -27,18 +20,16 @@ public abstract class BackendServiceBase implements BackendService {
     private String backendAddress;
     private long sessionExpiryThreshold = SESSIONS_NEVER_EXPIRE;
     private long cleanUpRunIntervalSeconds = 10;
-    private final ExecutorService cleanUpThreads = Executors.newSingleThreadExecutor();
     private boolean shuttingDown;
 
     @Override
     public void init() {
-        Future<?> worker = cleanUpThreads.submit(new CleanUpWorker());
+        shuttingDown = false;
     }
 
     @Override
     public void shutdown() {
         shuttingDown = true;
-        cleanUpThreads.shutdown();
     }
 
     @Override
@@ -101,28 +92,5 @@ public abstract class BackendServiceBase implements BackendService {
 
     protected final boolean isShuttingDown() {
         return shuttingDown;
-    }
-
-    private class CleanUpWorker implements Runnable {
-
-        @Override
-        public void run() {
-            LOGGER.debug("CleanUpWorker started");
-            while (!shuttingDown) {
-                LOGGER.debug("CleanUpWorker working");
-                try {
-                    List<String> removed = removeExpiredSessions();
-                    logDeletedSessions(removed);
-                    SECONDS.sleep(cleanUpRunIntervalSeconds);
-                } catch (InterruptedException ex) {
-                    LOGGER.warn("CleanUpWorker's sleep interrupted", ex);
-                }
-            }
-        }
-
-        private void logDeletedSessions(List<String> sessionIds) {
-            sessionManagementLogger.info("Sessions deleted: {}", join(", ", sessionIds));
-        }
-
     }
 }

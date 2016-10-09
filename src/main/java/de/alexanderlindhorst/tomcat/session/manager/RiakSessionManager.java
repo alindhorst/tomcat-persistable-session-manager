@@ -208,16 +208,16 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         LOGGER.debug("event {}", event);
         PersistableSession session = (PersistableSession) event.getSession();
         switch (event.getType()) {
-            case SESSION_DESTROYED_EVENT:
-                remove(session);
-                break;
-            case SESSION_CREATED_EVENT:
-            case SESSION_ATTRIBUTE_SET:
-                session.setDirty(true);
-                storeSession(session);
-                break;
-            default:
-                throw new AssertionError("Unknown event type: " + event.getType());
+        case SESSION_DESTROYED_EVENT:
+            remove(session);
+            break;
+        case SESSION_CREATED_EVENT:
+        case SESSION_ATTRIBUTE_SET:
+            session.setDirty(true);
+            storeSession(session);
+            break;
+        default:
+            throw new AssertionError("Unknown event type: " + event.getType());
         }
     }
 
@@ -257,4 +257,15 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         }
         super.destroyInternal();
     }
+
+    @Override
+    public void processExpires() {
+        if (backendService != null) {
+            LOGGER.debug("removing expired sessions");
+            backendService.removeExpiredSessions();
+        } else {
+            throw new IllegalStateException("No backend service found, can't process expired sessions");
+        }
+    }
+
 }

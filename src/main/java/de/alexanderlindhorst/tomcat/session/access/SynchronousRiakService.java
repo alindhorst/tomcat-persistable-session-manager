@@ -24,11 +24,13 @@ import com.basho.riak.client.core.query.Namespace;
 import com.basho.riak.client.core.query.RiakObject;
 import com.basho.riak.client.core.query.indexes.LongIntIndex;
 import com.basho.riak.client.core.util.BinaryValue;
+import com.google.common.collect.Lists;
 
 import de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.System.currentTimeMillis;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 
@@ -38,6 +40,7 @@ import static java.util.stream.Collectors.toList;
 public class SynchronousRiakService extends BackendServiceBase {
 
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
+    private static final int BATCH_SIZE = 1000;
     private static final String LAST_ACCESSED = "lastAccessed";
     private RiakClient client;
 
@@ -137,9 +140,30 @@ public class SynchronousRiakService extends BackendServiceBase {
         }
     }
 
+    /**
+     * {@inheritDoc} This implementation fetches works in batches of 1000 ids. Between the batches there will be a pause of half a
+     * second.
+     */
     @Override
     public List<String> removeExpiredSessions() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        List<String> accumulated = Lists.newArrayList();
+        List<String> expiredSessionIds = getExpiredSessionIds();
+        while (!expiredSessionIds.isEmpty()) {
+            expiredSessionIds.forEach(id -> {
+                deleteSessionInternal(id);
+                accumulated.add(id);
+            });
+            //don't wait if the last batch wasn't maxed up
+            if (expiredSessionIds.size() == BATCH_SIZE) {
+                try {
+                    MILLISECONDS.sleep(500);
+                } catch (InterruptedException ex) {
+                    LOGGER.warn("Interruption occured while waiting before the next batch to be fetched", ex);
+                }
+            }
+            expiredSessionIds = getExpiredSessionIds();
+        }
+        return accumulated;
     }
 
     @Override
@@ -148,7 +172,7 @@ public class SynchronousRiakService extends BackendServiceBase {
             try {
                 long threshold = currentTimeMillis() - getSessionExpiryThreshold();
                 IntIndexQuery query = new IntIndexQuery.Builder(SESSIONS, LAST_ACCESSED, 0l, threshold)
-                        .withMaxResults(1000)
+                        .withMaxResults(BATCH_SIZE)
                         .build();
                 IntIndexQuery.Response response = client.execute(query);
                 return response.getEntries().stream()

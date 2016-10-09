@@ -19,7 +19,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +51,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -288,7 +291,7 @@ public class SynchronousRiakServiceTest {
     @Test
     public void getExpiredSessionIdsFetchesExpiredSessions() throws ExecutionException, InterruptedException {
         ArrayList<String> expectedValues = newArrayList("id1", "md5sum1919879", "nonsense");
-        QueryOverride.ResponseOverride response = new QueryOverride.ResponseOverride(newArrayList("id1", "md5sum1919879", "nonsense"));
+        QueryOverride.ResponseOverride response = new QueryOverride.ResponseOverride(expectedValues);
         doReturn(response).when(client).execute(any(IntIndexQuery.class));
         service.setSessionExpiryThreshold(30000);
 
@@ -297,6 +300,89 @@ public class SynchronousRiakServiceTest {
         assertThat(expiredSessionIds, is(not(nullValue())));
         assertThat(expiredSessionIds.size(), is(3));
         expectedValues.forEach(item -> assertThat(expiredSessionIds.contains(item), is(true)));
+    }
+
+    @Test
+    public void removeExpiredSessionOnBatchGreaterBatchSize() throws ExecutionException, InterruptedException {
+        ArrayList<String> batch1 = newArrayList();
+        for (int i = 0; i < 1000; i++) {
+            batch1.add(Integer.toString(i));
+        }
+        ArrayList<String> batch2 = newArrayList();
+        for (int i = 1000; i < 1500; i++) {
+            batch2.add(Integer.toString(i));
+        }
+        ArrayList<String> batch3 = newArrayList();
+        ArrayList<String> expectedValues = newArrayList();
+        expectedValues.addAll(batch1);
+        expectedValues.addAll(batch2);
+        QueryOverride.ResponseOverride response1 = new QueryOverride.ResponseOverride(batch1);
+        QueryOverride.ResponseOverride response2 = new QueryOverride.ResponseOverride(batch2);
+        QueryOverride.ResponseOverride response3 = new QueryOverride.ResponseOverride(batch3);
+        doAnswer(new MultipleIntIndexQueryResponseAnswer(response1, response2, response3)).when(client).execute(any(IntIndexQuery.class));
+        service.setSessionExpiryThreshold(30000);
+
+        List<String> expiredSessionIds = service.removeExpiredSessions();
+
+        assertThat(expiredSessionIds, is(not(nullValue())));
+        assertThat(expiredSessionIds.size(), is(1500));
+        expectedValues.forEach(item -> assertThat(expiredSessionIds.contains(item), is(true)));
+    }
+    @Test
+    public void removeExpiredSessionOnBatchOfBatchSize() throws ExecutionException, InterruptedException {
+        ArrayList<String> batch1 = newArrayList();
+        for (int i = 0; i < 1000; i++) {
+            batch1.add(Integer.toString(i));
+        }
+        ArrayList<String> batch2 = newArrayList();
+        ArrayList<String> expectedValues = newArrayList();
+        expectedValues.addAll(batch1);
+        expectedValues.addAll(batch2);
+        QueryOverride.ResponseOverride response1 = new QueryOverride.ResponseOverride(batch1);
+        QueryOverride.ResponseOverride response2 = new QueryOverride.ResponseOverride(batch2);
+        doAnswer(new MultipleIntIndexQueryResponseAnswer(response1, response2)).when(client).execute(any(IntIndexQuery.class));
+        service.setSessionExpiryThreshold(30000);
+
+        List<String> expiredSessionIds = service.removeExpiredSessions();
+
+        assertThat(expiredSessionIds, is(not(nullValue())));
+        assertThat(expiredSessionIds.size(), is(1000));
+        expectedValues.forEach(item -> assertThat(expiredSessionIds.contains(item), is(true)));
+    }
+    @Test
+    public void removeExpiredSessionOnBatchSmallerBatchSize() throws ExecutionException, InterruptedException {
+        ArrayList<String> batch1 = newArrayList();
+        for (int i = 0; i < 999; i++) {
+            batch1.add(Integer.toString(i));
+        }
+        ArrayList<String> batch2 = newArrayList();
+        ArrayList<String> expectedValues = newArrayList();
+        expectedValues.addAll(batch1);
+        expectedValues.addAll(batch2);
+        QueryOverride.ResponseOverride response1 = new QueryOverride.ResponseOverride(batch1);
+        QueryOverride.ResponseOverride response2 = new QueryOverride.ResponseOverride(batch2);
+        doAnswer(new MultipleIntIndexQueryResponseAnswer(response1, response2)).when(client).execute(any(IntIndexQuery.class));
+        service.setSessionExpiryThreshold(30000);
+
+        List<String> expiredSessionIds = service.removeExpiredSessions();
+
+        assertThat(expiredSessionIds, is(not(nullValue())));
+        assertThat(expiredSessionIds.size(), is(999));
+        expectedValues.forEach(item -> assertThat(expiredSessionIds.contains(item), is(true)));
+    }
+    @Test
+    public void removeExpiredSessionOnEmptyBatch() throws ExecutionException, InterruptedException {
+        ArrayList<String> batch1 = newArrayList();
+        ArrayList<String> expectedValues = newArrayList();
+        expectedValues.addAll(batch1);
+        QueryOverride.ResponseOverride response1 = new QueryOverride.ResponseOverride(batch1);
+        doAnswer(new MultipleIntIndexQueryResponseAnswer(response1)).when(client).execute(any(IntIndexQuery.class));
+        service.setSessionExpiryThreshold(30000);
+
+        List<String> expiredSessionIds = service.removeExpiredSessions();
+
+        assertThat(expiredSessionIds, is(not(nullValue())));
+        assertThat(expiredSessionIds.isEmpty(), is(true));
     }
 
     @Test
@@ -361,5 +447,26 @@ public class SynchronousRiakServiceTest {
                 }
             }
         }
+    }
+
+    private class MultipleIntIndexQueryResponseAnswer implements Answer<QueryOverride.ResponseOverride> {
+
+        private final List<QueryOverride.ResponseOverride> responses;
+        private int index = 0;
+
+        public MultipleIntIndexQueryResponseAnswer(QueryOverride.ResponseOverride... responses) {
+            this.responses = newArrayList(responses);
+        }
+
+        @Override
+        public QueryOverride.ResponseOverride answer(InvocationOnMock invocation) throws Throwable {
+            if (!IntIndexQuery.class.equals(invocation.getArguments()[0].getClass())) {
+                return null;
+            }
+            QueryOverride.ResponseOverride response = responses.get(index % responses.size());
+            index++;
+            return response;
+        }
+
     }
 }

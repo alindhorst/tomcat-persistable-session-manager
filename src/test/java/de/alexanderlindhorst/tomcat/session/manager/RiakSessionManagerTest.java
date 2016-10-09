@@ -12,6 +12,7 @@ import javax.servlet.http.HttpSessionIdListener;
 
 import org.apache.catalina.*;
 import org.apache.catalina.session.StandardSession;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -63,11 +64,17 @@ public class RiakSessionManagerTest {
     private RiakSessionManager instance;
 
     @Before
-    public void setup() {
+    public void setup() throws ClassNotFoundException, IOException {
         when(sessionIdGenerator.generateSessionId()).thenReturn(UUID.randomUUID().toString());
         when(context.getParent()).thenReturn(engine);
         when(engine.getJvmRoute()).thenReturn("host");
         when(context.getName()).thenReturn("/mycontext");
+        instance.load();
+    }
+
+    @After
+    public void tearDown() throws IOException {
+        instance.unload();
     }
 
     @Test
@@ -359,5 +366,18 @@ public class RiakSessionManagerTest {
     public void destroyInternalTriggersShutDownCallOnService() throws LifecycleException {
         instance.destroyInternal();
         verify(backendService).shutdown();
+    }
+
+    @Test
+    public void processExpiresCallsBackendServiceRemovalMethod() {
+        instance.processExpires();
+        verify(backendService).removeExpiredSessions();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void processExpiresThrowsExceptionWithoutBackendService() throws IllegalArgumentException, IllegalAccessException,
+            NoSuchFieldException {
+        setFieldValueForObject(instance, "backendService", null);
+        instance.processExpires();
     }
 }
