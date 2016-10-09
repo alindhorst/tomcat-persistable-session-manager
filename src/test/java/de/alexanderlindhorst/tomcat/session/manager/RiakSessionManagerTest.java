@@ -79,9 +79,6 @@ public class RiakSessionManagerTest {
 
     @Test
     public void propertiesCanBeReadBackAsSet() {
-        instance.setServiceCleanUpRunIntervalSeconds(15);
-        assertThat(instance.getServiceCleanUpRunIntervalSeconds(), is(15l));
-
         instance.setServiceImplementationClassName("blub");
         assertThat(instance.getServiceImplementationClassName(), is("blub"));
 

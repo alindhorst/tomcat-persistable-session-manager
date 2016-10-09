@@ -19,7 +19,6 @@ public abstract class BackendServiceBase implements BackendService {
     private Logger sessionManagementLogger = LOGGER;
     private String backendAddress;
     private long sessionExpiryThreshold = SESSIONS_NEVER_EXPIRE;
-    private long cleanUpRunIntervalSeconds = 10;
     private boolean shuttingDown;
 
     @Override
@@ -70,15 +69,6 @@ public abstract class BackendServiceBase implements BackendService {
 
     public final long getSessionExpiryThreshold() {
         return sessionExpiryThreshold;
-    }
-
-    public final long getCleanUpRunIntervalSeconds() {
-        return cleanUpRunIntervalSeconds;
-    }
-
-    @Override
-    public final void setCleanUpRunIntervalSeconds(long cleanUpRunIntervalSeconds) {
-        this.cleanUpRunIntervalSeconds = cleanUpRunIntervalSeconds;
     }
 
     public final Logger getSessionManagementLogger() {

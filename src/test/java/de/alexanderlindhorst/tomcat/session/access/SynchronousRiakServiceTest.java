@@ -265,12 +265,6 @@ public class SynchronousRiakServiceTest {
     }
 
     @Test
-    public void getCleanUpRunIntervalSecondsGetSetValue() {
-        service.setCleanUpRunIntervalSeconds(15);
-        assertThat(service.getCleanUpRunIntervalSeconds(), is(15l));
-    }
-
-    @Test
     public void getSessionManagementLoggerReturnsSetValue() {
         Logger logger = LoggerFactory.getLogger("blub");
         service.setSessionManagementLogger(logger);

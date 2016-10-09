@@ -28,8 +28,6 @@ public interface BackendService {
 
     void shutdown();
 
-    void setCleanUpRunIntervalSeconds(long cleanUpRunIntervalSeconds);
-
     void setSessionExpiryThreshold(long sessionExpiryThresholdMilliSeconds);
 
     void setSessionManagementLogger(Logger sessionManagementLogger);
