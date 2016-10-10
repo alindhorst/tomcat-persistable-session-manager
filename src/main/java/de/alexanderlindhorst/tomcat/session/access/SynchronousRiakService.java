@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 
 import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.api.commands.indexes.IntIndexQuery;
+import com.basho.riak.client.api.commands.indexes.IntIndexQuery.Builder;
 import com.basho.riak.client.api.commands.kv.DeleteValue;
 import com.basho.riak.client.api.commands.kv.FetchValue;
 import com.basho.riak.client.api.commands.kv.StoreValue;
@@ -141,8 +142,8 @@ public class SynchronousRiakService extends BackendServiceBase {
     }
 
     /**
-     * {@inheritDoc} This implementation fetches works in batches of 1000 ids. Between the batches there will be a pause of half a
-     * second.
+     * {@inheritDoc} This implementation fetches works in batches of 1000 ids. Between the batches there will be a pause
+     * of half a second.
      */
     @Override
     public List<String> removeExpiredSessions() {
@@ -171,10 +172,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         if (getSessionExpiryThreshold() != -1) {
             try {
                 long threshold = currentTimeMillis() - getSessionExpiryThreshold();
-                IntIndexQuery query = new IntIndexQuery.Builder(SESSIONS, LAST_ACCESSED, 0l, threshold)
-                        .withMaxResults(BATCH_SIZE)
-                        .build();
-                IntIndexQuery.Response response = client.execute(query);
+                IntIndexQuery.Response response = getIntIndexQueryResults(0l, threshold, BATCH_SIZE);
                 return response.getEntries().stream()
                         .map(entry -> entry.getRiakObjectLocation().getKeyAsString())
                         .collect(toList());
@@ -183,5 +181,16 @@ public class SynchronousRiakService extends BackendServiceBase {
             }
         }
         return Collections.<String>emptyList();
+    }
+
+    private IntIndexQuery.Response getIntIndexQueryResults(long fromValue, long toValue, int batchSize) throws
+            ExecutionException,
+            InterruptedException {
+        Builder builder = new IntIndexQuery.Builder(SESSIONS, LAST_ACCESSED, fromValue, toValue);
+        if (batchSize > -1) {
+            builder = builder.withMaxResults(batchSize);
+        }
+        IntIndexQuery query = builder.build();
+        return client.execute(query);
     }
 }
