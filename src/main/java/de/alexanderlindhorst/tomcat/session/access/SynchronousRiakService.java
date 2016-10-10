@@ -42,7 +42,7 @@ public class SynchronousRiakService extends BackendServiceBase {
 
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
     private static final int BATCH_SIZE = 1000;
-    private static final String LAST_ACCESSED = "lastAccessed";
+    private static final String LAST_ACCESSED = "_lastAccessed";
     private RiakClient client;
 
     @Override
@@ -52,10 +52,22 @@ public class SynchronousRiakService extends BackendServiceBase {
         }
         LOGGER.debug("persistSessionInternal {}", sessionId);
         try {
-            RiakObject object = new RiakObject().setValue(BinaryValue.create(bytes));
+            //look up in indices
             Location location = new Location(SESSIONS, sessionId);
-            object.getIndexes().getIndex(LongIntIndex.named(LAST_ACCESSED)).add(currentTimeMillis());
-            StoreValue storeOp = new StoreValue.Builder(object)
+            RiakObject riakObject = getRiakObjectForSessionId(sessionId, location);
+            if (riakObject == null) {
+                riakObject = new RiakObject();
+            } else {
+                //remove from indices with old values
+                riakObject.getIndexes().getIndex(LongIntIndex.named(LAST_ACCESSED)).removeAll();
+            }
+
+            //update object
+            riakObject.setValue(BinaryValue.create(bytes));
+            riakObject.getIndexes().getIndex(LongIntIndex.named(LAST_ACCESSED)).add(currentTimeMillis());
+
+            //store updated object
+            StoreValue storeOp = new StoreValue.Builder(riakObject)
                     .withLocation(location)
                     .build();
             StoreValue.Response response = client.execute(storeOp);
@@ -73,8 +85,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         try {
             LOGGER.debug("getSessionInternal {}", sessionId);
             Location location = new Location(SESSIONS, sessionId);
-            FetchValue fetchValue = new FetchValue.Builder(location).build();
-            RiakObject value = client.execute(fetchValue).getValue(RiakObject.class);
+            RiakObject value = getRiakObjectForSessionId(sessionId, location);
             if (value == null) {
                 return null;
             }
@@ -142,8 +153,8 @@ public class SynchronousRiakService extends BackendServiceBase {
     }
 
     /**
-     * {@inheritDoc} This implementation fetches works in batches of 1000 ids. Between the batches there will be a pause
-     * of half a second.
+     * {@inheritDoc} This implementation fetches works in batches of 1000 ids. Between the batches there will be a pause of half a
+     * second.
      */
     @Override
     public List<String> removeExpiredSessions() {
@@ -172,7 +183,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         if (getSessionExpiryThreshold() != -1) {
             try {
                 long threshold = currentTimeMillis() - getSessionExpiryThreshold();
-                IntIndexQuery.Response response = getIntIndexQueryResults(0l, threshold, BATCH_SIZE);
+                IntIndexQuery.Response response = getLastAccessedQueryResults(0l, threshold, BATCH_SIZE);
                 return response.getEntries().stream()
                         .map(entry -> entry.getRiakObjectLocation().getKeyAsString())
                         .collect(toList());
@@ -183,7 +194,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         return Collections.<String>emptyList();
     }
 
-    private IntIndexQuery.Response getIntIndexQueryResults(long fromValue, long toValue, int batchSize) throws
+    private IntIndexQuery.Response getLastAccessedQueryResults(long fromValue, long toValue, int batchSize) throws
             ExecutionException,
             InterruptedException {
         Builder builder = new IntIndexQuery.Builder(SESSIONS, LAST_ACCESSED, fromValue, toValue);
@@ -192,5 +203,11 @@ public class SynchronousRiakService extends BackendServiceBase {
         }
         IntIndexQuery query = builder.build();
         return client.execute(query);
+    }
+
+    private RiakObject getRiakObjectForSessionId(String sessionId, Location location) throws ExecutionException, InterruptedException {
+        FetchValue fetchValue = new FetchValue.Builder(location).withOption(FetchValue.Option.DELETED_VCLOCK, true).build();
+        RiakObject value = client.execute(fetchValue).getValue(RiakObject.class);
+        return value;
     }
 }
