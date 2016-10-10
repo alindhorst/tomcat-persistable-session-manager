@@ -188,7 +188,7 @@ public class SynchronousRiakService extends BackendServiceBase {
             InterruptedException {
         Builder builder = new IntIndexQuery.Builder(SESSIONS, LAST_ACCESSED, fromValue, toValue);
         if (batchSize > -1) {
-            builder = builder.withMaxResults(batchSize);
+            builder = builder.withMaxResults(batchSize).withPaginationSort(true);
         }
         IntIndexQuery query = builder.build();
         return client.execute(query);
