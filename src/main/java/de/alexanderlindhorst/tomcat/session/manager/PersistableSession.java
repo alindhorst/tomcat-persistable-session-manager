@@ -14,8 +14,9 @@ import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUti
 public class PersistableSession extends StandardSession {
 
     public static final String SESSION_ATTRIBUTE_SET = "SESSION_ATTRIBUTE_SET";
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
     private transient boolean dirty = false;
+    private transient long lastAccessedLocally = System.currentTimeMillis();
 
     public PersistableSession(Manager manager) {
         super(manager);
@@ -41,5 +42,14 @@ public class PersistableSession extends StandardSession {
 
     private void fireSessionAttributeSet(PersistableSessionAttribute sessionAttribute) {
         fireSessionEvent(SESSION_ATTRIBUTE_SET, sessionAttribute);
+    }
+
+    @Override
+    public long getLastAccessedTime() {
+        return lastAccessedLocally;
+    }
+
+    public void touchLastAccessedTime() {
+        lastAccessedLocally = System.currentTimeMillis();
     }
 }

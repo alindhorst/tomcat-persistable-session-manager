@@ -87,8 +87,8 @@ public class RiakSessionManagerTest {
         instance.setServiceImplementationClassName("blub");
         assertThat(instance.getServiceImplementationClassName(), is("blub"));
 
-        instance.setServiceSessionExpiryThreshold(17000);
-        assertThat(instance.getServiceSessionExpiryThreshold(), is(17000l));
+        instance.setSessionExpiryThreshold(17000);
+        assertThat(instance.getSessionExpiryThreshold(), is(17000l));
     }
 
     @Test
@@ -171,6 +171,10 @@ public class RiakSessionManagerTest {
     @Test
     public void findSessionDoesNotRetrieveSessionFromServiceIfSameJVMRoute() throws IOException {
         String sessionId = "mySession.host";
+        PersistableSession session = new PersistableSession(instance);
+        session.setId(sessionId);
+        instance.add(session);
+
         instance.findSession(sessionId);
         verify(backendService, never()).getSession(any(PersistableSession.class), eq(sessionId));
     }
@@ -445,6 +449,44 @@ public class RiakSessionManagerTest {
         //verify
         backendIds.forEach(id -> assertThat(instance.getSession(id), is(nullValue())));
         localIdsOverlay.forEach(id -> assertThat(instance.getSession(id), is(not(nullValue()))));
+    }
+
+    @Test
+    public void processExpiresWritesBackRemotelyRemovedSessionIfYoungerLocally() throws IOException {
+        //setup
+        instance.setSessionExpiryThreshold(100000);
+        ArrayList<String> backendIds = newArrayList("1", "2", "3");
+        backendIds.forEach(id -> {
+            //add them locally
+            PersistableSession found;
+            try {
+                found = (PersistableSession) instance.findSession(id);
+                try {
+                    setFieldValueForObject(found, "lastAccessedLocally", 1);
+                } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException ex) {
+                }
+                found.setAttribute("marker", "bla");
+                if ("3".equals(id)) {
+                    found.touchLastAccessedTime();
+                }
+            } catch (IOException ex) {
+                //do nothing
+            }
+        });
+        List<String> localIds = backendIds.stream().map(id -> id + "." + engine.getJvmRoute()).collect(toList());
+
+        when(backendService.removeExpiredSessions()).thenReturn(backendIds);
+
+        instance.processExpires();;
+
+        //verify
+        localIds.forEach(id -> {
+            if (id.startsWith("3")) {
+                assertThat(instance.getSession(id), is(not(nullValue())));
+            } else {
+                assertThat(instance.getSession(id), is(nullValue()));
+            }
+        });
     }
 
     @Test

@@ -19,6 +19,10 @@ public final class PersistableSessionUtils {
 
     static final Pattern SESSION_ID_PATTERN = Pattern.compile("^(?<sessionId>[^\\.]+)(\\.(?<jvmRoute>.*))?$");
 
+    private PersistableSessionUtils() {
+        //utils class
+    }
+
     public static String calculateJvmRouteAgnosticSessionId(String id) {
         Matcher matcher = PersistableSessionUtils.SESSION_ID_PATTERN.matcher(id);
         matcher.find();
@@ -29,10 +33,6 @@ public final class PersistableSessionUtils {
         Matcher matcher = PersistableSessionUtils.SESSION_ID_PATTERN.matcher(id);
         matcher.find();
         return matcher.group("jvmRoute");
-    }
-
-    private PersistableSessionUtils() {
-        //utils class
     }
 
     public static byte[] serializeSession(PersistableSession session) {

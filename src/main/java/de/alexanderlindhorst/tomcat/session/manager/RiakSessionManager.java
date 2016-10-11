@@ -19,6 +19,7 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.calculateJvmRoute;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.calculateJvmRouteAgnosticSessionId;
+import static java.lang.System.currentTimeMillis;
 import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 
@@ -32,7 +33,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
     private BackendService backendService;
     private String serviceImplementationClassName;
     private String serviceBackendAddress;
-    private long serviceSessionExpiryThreshold = -1;
+    private long sessionExpiryThreshold = -1;
 
     public String getServiceImplementationClassName() {
         return serviceImplementationClassName;
@@ -50,12 +51,12 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         this.serviceBackendAddress = serviceBackendAddress;
     }
 
-    public long getServiceSessionExpiryThreshold() {
-        return serviceSessionExpiryThreshold;
+    public long getSessionExpiryThreshold() {
+        return sessionExpiryThreshold;
     }
 
-    public void setServiceSessionExpiryThreshold(long serviceSessionExpiryThreshold) {
-        this.serviceSessionExpiryThreshold = serviceSessionExpiryThreshold;
+    public void setSessionExpiryThreshold(long serviceSessionExpiryThreshold) {
+        this.sessionExpiryThreshold = serviceSessionExpiryThreshold;
     }
 
     @Override
@@ -66,7 +67,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
             backendService = (BackendService) Class.forName(serviceImplementationClassName).newInstance();
             backendService.setBackendAddress(serviceBackendAddress);
             backendService.setSessionManagementLogger(LOGGER);
-            backendService.setSessionExpiryThreshold(serviceSessionExpiryThreshold);
+            backendService.setSessionExpiryThreshold(sessionExpiryThreshold);
             backendService.init();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException ex) {
             throw new LifecycleException(ex);
@@ -147,6 +148,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
                 add(session);
             }
         }
+        session.touchLastAccessedTime();
         return session;
     }
 
@@ -255,7 +257,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
     public void processExpires() {
         if (backendService != null) {
             LOGGER.debug("removing expired sessions");
-            
+
             final String idSuffix;
             if (!isNullOrEmpty(getJvmRoute())) {
                 idSuffix = "." + getJvmRoute();
@@ -263,11 +265,19 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
                 idSuffix = "";
             }
 
+            final long removalThreshold = currentTimeMillis() - getSessionExpiryThreshold();
+
             backendService.removeExpiredSessions().forEach(id -> {
                 try {
-                    Session session = super.findSession(id + idSuffix);
+                    PersistableSession session = (PersistableSession) super.findSession(id + idSuffix);
                     if (session != null) {
-                        remove(session);
+                        if (session.getLastAccessedTime() < removalThreshold) {
+                            super.remove(session);
+                        } else {
+                            //locally newer than remote, write back
+                            session.setDirty(true);
+                            storeSession(session);
+                        }
                     }
                 } catch (IOException ex) {
                     LOGGER.error("Couldn't find session to remove it locally: " + id, ex);
