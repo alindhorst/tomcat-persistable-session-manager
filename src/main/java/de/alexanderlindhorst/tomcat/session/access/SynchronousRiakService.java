@@ -14,7 +14,6 @@ import java.util.regex.Pattern;
 
 import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.api.commands.indexes.IntIndexQuery;
-import com.basho.riak.client.api.commands.indexes.IntIndexQuery.Builder;
 import com.basho.riak.client.api.commands.kv.DeleteValue;
 import com.basho.riak.client.api.commands.kv.FetchValue;
 import com.basho.riak.client.api.commands.kv.StoreValue;
@@ -54,7 +53,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         try {
             //look up in indices
             Location location = new Location(SESSIONS, sessionId);
-            RiakObject riakObject = getRiakObjectForSessionId(sessionId, location);
+            RiakObject riakObject = getRiakObjectForSessionId(location);
             if (riakObject == null) {
                 riakObject = new RiakObject();
             } else {
@@ -85,7 +84,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         try {
             LOGGER.debug("getSessionInternal {}", sessionId);
             Location location = new Location(SESSIONS, sessionId);
-            RiakObject value = getRiakObjectForSessionId(sessionId, location);
+            RiakObject value = getRiakObjectForSessionId(location);
             if (value == null) {
                 return null;
             }
@@ -183,7 +182,7 @@ public class SynchronousRiakService extends BackendServiceBase {
         if (getSessionExpiryThreshold() != -1) {
             try {
                 long threshold = currentTimeMillis() - getSessionExpiryThreshold();
-                IntIndexQuery.Response response = getLastAccessedQueryResults(0l, threshold, BATCH_SIZE);
+                IntIndexQuery.Response response = getLastAccessedQueryResults(0l, threshold);
                 return response.getEntries().stream()
                         .map(entry -> entry.getRiakObjectLocation().getKeyAsString())
                         .collect(toList());
@@ -194,18 +193,14 @@ public class SynchronousRiakService extends BackendServiceBase {
         return Collections.<String>emptyList();
     }
 
-    private IntIndexQuery.Response getLastAccessedQueryResults(long fromValue, long toValue, int batchSize) throws
+    private IntIndexQuery.Response getLastAccessedQueryResults(long fromValue, long toValue) throws
             ExecutionException,
             InterruptedException {
-        Builder builder = new IntIndexQuery.Builder(SESSIONS, LAST_ACCESSED, fromValue, toValue);
-        if (batchSize > -1) {
-            builder = builder.withMaxResults(batchSize).withPaginationSort(true);
-        }
-        IntIndexQuery query = builder.build();
-        return client.execute(query);
+        return client.execute(new IntIndexQuery.Builder(SESSIONS, LAST_ACCESSED, fromValue, toValue).withMaxResults(BATCH_SIZE).
+                withPaginationSort(true).build());
     }
 
-    private RiakObject getRiakObjectForSessionId(String sessionId, Location location) throws ExecutionException, InterruptedException {
+    private RiakObject getRiakObjectForSessionId(Location location) throws ExecutionException, InterruptedException {
         FetchValue fetchValue = new FetchValue.Builder(location).withOption(FetchValue.Option.DELETED_VCLOCK, true).build();
         RiakObject value = client.execute(fetchValue).getValue(RiakObject.class);
         return value;

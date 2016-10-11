@@ -5,6 +5,7 @@ package de.alexanderlindhorst.tomcat.session.access;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -13,7 +14,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -57,6 +57,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -142,16 +143,56 @@ public class SynchronousRiakServiceTest {
     }
 
     @Test
-    @Ignore("Fix when session fix is proven to work")
-    public void persistSessionInternalRunsStoreCommandOnCluster() throws InterruptedException, ExecutionException {
+    @SuppressWarnings("unchecked")
+    public void persistSessionInternalRunsStoreCommandOnClusterForNewObject() throws InterruptedException, ExecutionException {
         @SuppressWarnings("unchecked")
-        RiakFuture<StoreOperation.Response, Location> coreFuture = mock(RiakFuture.class);
+        RiakFuture<StoreOperation.Response, Location> storeFuture = mock(RiakFuture.class);
+        RiakFuture<FetchOperation.Response, Location> fetchFuture = mock(RiakFuture.class);
         StoreOperation.Response storeOperationResponse = mock(StoreOperation.Response.class);
-        when(coreFuture.get()).thenReturn(storeOperationResponse);
-        when(cluster.execute(any(StoreOperation.class))).thenReturn(coreFuture);
+        FetchOperation.Response fetchOperationResponse = mock(FetchOperation.Response.class);
+        when(fetchOperationResponse.getObjectList()).thenReturn(emptyList());
+        when(storeFuture.get()).thenReturn(storeOperationResponse);
+        when(fetchFuture.get()).thenReturn(fetchOperationResponse);
+        when(cluster.execute(any(FutureOperation.class))).thenAnswer(invocation -> {
+            if (StoreOperation.class.equals(invocation.getArguments()[0].getClass())) {
+                return storeFuture;
+            }
+            if (FetchOperation.class.equals(invocation.getArguments()[0].getClass())) {
+                return fetchFuture;
+            }
+            return null;
+        });
         service.persistSessionInternal("sessionId", bytes);
 
-        verify(cluster).execute(operationCaptor.capture());
+        verify(cluster, times(2)).execute(operationCaptor.capture());
+
+        FutureOperation<?, ?, ?> operation = operationCaptor.getValue();
+        assertThat(operation.getClass().getName(), is(StoreOperation.class.getName()));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void persistSessionInternalRunsStoreCommandOnClusterForExistingObject() throws InterruptedException, ExecutionException {
+        @SuppressWarnings("unchecked")
+        RiakFuture<StoreOperation.Response, Location> storeFuture = mock(RiakFuture.class);
+        RiakFuture<FetchOperation.Response, Location> fetchFuture = mock(RiakFuture.class);
+        StoreOperation.Response storeOperationResponse = mock(StoreOperation.Response.class);
+        FetchOperation.Response fetchOperationResponse = mock(FetchOperation.Response.class);
+        when(storeFuture.get()).thenReturn(storeOperationResponse);
+        when(fetchFuture.get()).thenReturn(fetchOperationResponse);
+        when(fetchOperationResponse.getObjectList()).thenReturn(Collections.singletonList(new RiakObject()));
+        when(cluster.execute(any(FutureOperation.class))).thenAnswer(invocation -> {
+            if (StoreOperation.class.equals(invocation.getArguments()[0].getClass())) {
+                return storeFuture;
+            }
+            if (FetchOperation.class.equals(invocation.getArguments()[0].getClass())) {
+                return fetchFuture;
+            }
+            return null;
+        });
+        service.persistSessionInternal("sessionId", bytes);
+
+        verify(cluster, times(2)).execute(operationCaptor.capture());
 
         FutureOperation<?, ?, ?> operation = operationCaptor.getValue();
         assertThat(operation.getClass().getName(), is(StoreOperation.class.getName()));
@@ -315,7 +356,8 @@ public class SynchronousRiakServiceTest {
         QueryOverride.ResponseOverride response1 = new QueryOverride.ResponseOverride(batch1);
         QueryOverride.ResponseOverride response2 = new QueryOverride.ResponseOverride(batch2);
         QueryOverride.ResponseOverride response3 = new QueryOverride.ResponseOverride(batch3);
-        doAnswer(new MultipleIntIndexQueryResponseAnswer(response1, response2, response3)).when(client).execute(any(IntIndexQuery.class));
+        doAnswer(new MultipleIntIndexQueryResponseAnswer(response1, response2, response3)).when(client).execute(
+                any(IntIndexQuery.class));
         service.setSessionExpiryThreshold(30000);
 
         List<String> expiredSessionIds = service.removeExpiredSessions();
@@ -324,6 +366,7 @@ public class SynchronousRiakServiceTest {
         assertThat(expiredSessionIds.size(), is(1500));
         expectedValues.forEach(item -> assertThat(expiredSessionIds.contains(item), is(true)));
     }
+
     @Test
     public void removeExpiredSessionOnBatchOfBatchSize() throws ExecutionException, InterruptedException {
         ArrayList<String> batch1 = newArrayList();
@@ -345,6 +388,7 @@ public class SynchronousRiakServiceTest {
         assertThat(expiredSessionIds.size(), is(1000));
         expectedValues.forEach(item -> assertThat(expiredSessionIds.contains(item), is(true)));
     }
+
     @Test
     public void removeExpiredSessionOnBatchSmallerBatchSize() throws ExecutionException, InterruptedException {
         ArrayList<String> batch1 = newArrayList();
@@ -366,6 +410,7 @@ public class SynchronousRiakServiceTest {
         assertThat(expiredSessionIds.size(), is(999));
         expectedValues.forEach(item -> assertThat(expiredSessionIds.contains(item), is(true)));
     }
+
     @Test
     public void removeExpiredSessionOnEmptyBatch() throws ExecutionException, InterruptedException {
         ArrayList<String> batch1 = newArrayList();
