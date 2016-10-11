@@ -5,6 +5,8 @@ package de.alexanderlindhorst.tomcat.session.manager;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import javax.servlet.http.HttpSessionEvent;
@@ -25,17 +27,22 @@ import org.mockito.runners.MockitoJUnitRunner;
 import de.alexanderlindhorst.tomcat.session.TestUtils.Parameter;
 import de.alexanderlindhorst.tomcat.session.access.FakeRiakService;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.getFieldValueFromObject;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.invokeMethod;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.setFieldValueForObject;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
+import static java.util.stream.Collectors.toList;
 import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -58,8 +65,6 @@ public class RiakSessionManagerTest {
     private SessionListener sessionListener;
     @Captor
     private ArgumentCaptor<SessionEvent> sessionEventCaptor;
-    @Captor
-    private ArgumentCaptor<HttpSessionEvent> httpSessionEventCaptor;
     @InjectMocks
     private RiakSessionManager instance;
 
@@ -375,6 +380,78 @@ public class RiakSessionManagerTest {
     public void processExpiresThrowsExceptionWithoutBackendService() throws IllegalArgumentException, IllegalAccessException,
             NoSuchFieldException {
         setFieldValueForObject(instance, "backendService", null);
+        instance.processExpires();
+    }
+
+    @Test
+    public void processExpiresRemovesSessionsLocallyWithJVMRouteIfSet() throws IOException {
+        //setup
+        ArrayList<String> backendIds = newArrayList("1", "2", "3");
+        backendIds.forEach(id -> {
+            //add them locally
+            StandardSession found = null;
+            try {
+                found = (StandardSession) instance.findSession(id);
+                found.setAttribute("marker", "bla");
+            } catch (IOException ex) {
+                //do nothing
+            }
+        });
+        //and one more
+        ((StandardSession) instance.findSession("4")).setAttribute("marker", "bla");
+        List<String> localIds = backendIds.stream().map(id -> id + "." + engine.getJvmRoute()).collect(toList());
+        List<String> localIdsOverlay = new ArrayList<>(localIds);
+        localIdsOverlay.add("4." + engine.getJvmRoute());
+        when(backendService.removeExpiredSessions()).thenReturn(backendIds);
+
+        //initial verification
+        localIdsOverlay.forEach(id -> assertThat(instance.getSession(id), is(not(nullValue()))));
+
+        instance.processExpires();
+        localIdsOverlay.removeAll(localIds);
+
+        //verify
+        localIds.forEach(id -> assertThat(instance.getSession(id), is(nullValue())));
+        localIdsOverlay.forEach(id -> assertThat(instance.getSession(id), is(not(nullValue()))));
+    }
+
+    @Test
+    public void processExpiresRemovesSessionsLocallyWithoutJVMRouteIfSet() throws IOException {
+        //setup
+        doReturn(null).when(engine).getJvmRoute(); //override setup()
+        ArrayList<String> backendIds = newArrayList("1", "2", "3");
+        backendIds.forEach(id -> {
+            //add them locally
+            StandardSession found = null;
+            try {
+                found = (StandardSession) instance.findSession(id);
+                found.setAttribute("marker", "bla");
+            } catch (IOException ex) {
+                //do nothing
+            }
+        });
+        //and one more
+        ((StandardSession) instance.findSession("4")).setAttribute("marker", "bla");
+        List<String> localIdsOverlay = new ArrayList<>(backendIds);
+        localIdsOverlay.add("4");
+        when(backendService.removeExpiredSessions()).thenReturn(backendIds);
+
+        //initial verification
+        localIdsOverlay.forEach(id -> assertThat(instance.getSession(id), is(not(nullValue()))));
+
+        instance.processExpires();
+        localIdsOverlay.removeAll(backendIds);
+
+        //verify
+        backendIds.forEach(id -> assertThat(instance.getSession(id), is(nullValue())));
+        localIdsOverlay.forEach(id -> assertThat(instance.getSession(id), is(not(nullValue()))));
+    }
+
+    @Test
+    public void processExpireRemovesUnknownSession() {
+        when(backendService.removeExpiredSessions()).thenReturn(newArrayList("1"));
+
+        //this must work
         instance.processExpires();
     }
 }

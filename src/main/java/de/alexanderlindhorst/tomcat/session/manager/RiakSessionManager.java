@@ -252,7 +252,24 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
     public void processExpires() {
         if (backendService != null) {
             LOGGER.debug("removing expired sessions");
-            backendService.removeExpiredSessions();
+            
+            final String idSuffix;
+            if (!isNullOrEmpty(getJvmRoute())) {
+                idSuffix = "." + getJvmRoute();
+            } else {
+                idSuffix = "";
+            }
+
+            backendService.removeExpiredSessions().forEach(id -> {
+                try {
+                    Session session = super.findSession(id + idSuffix);
+                    if (session != null) {
+                        remove(session);
+                    }
+                } catch (IOException ex) {
+                    LOGGER.error("Couldn't find session to remove it locally: " + id, ex);
+                }
+            });
         } else {
             throw new IllegalStateException("No backend service found, can't process expired sessions");
         }
