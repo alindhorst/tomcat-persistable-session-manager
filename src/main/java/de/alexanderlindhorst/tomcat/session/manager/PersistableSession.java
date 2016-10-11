@@ -3,10 +3,10 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
-import java.util.regex.Matcher;
-
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
+
+import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.calculateJvmRouteAgnosticSessionId;
 
 /**
  * @author alindhorst
@@ -41,17 +41,5 @@ public class PersistableSession extends StandardSession {
 
     private void fireSessionAttributeSet(PersistableSessionAttribute sessionAttribute) {
         fireSessionEvent(SESSION_ATTRIBUTE_SET, sessionAttribute);
-    }
-
-    public static String calculateJvmRouteAgnosticSessionId(String id) {
-        Matcher matcher = PersistableSessionUtils.SESSION_ID_PATTERN.matcher(id);
-        matcher.find();
-        return matcher.group("sessionId");
-    }
-
-    public static String calculateJvmRoute(String id) {
-        Matcher matcher = PersistableSessionUtils.SESSION_ID_PATTERN.matcher(id);
-        matcher.find();
-        return matcher.group("jvmRoute");
     }
 }

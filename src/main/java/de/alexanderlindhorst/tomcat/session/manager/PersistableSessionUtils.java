@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.LOGGER;
@@ -17,6 +18,18 @@ import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.LO
 public final class PersistableSessionUtils {
 
     static final Pattern SESSION_ID_PATTERN = Pattern.compile("^(?<sessionId>[^\\.]+)(\\.(?<jvmRoute>.*))?$");
+
+    public static String calculateJvmRouteAgnosticSessionId(String id) {
+        Matcher matcher = PersistableSessionUtils.SESSION_ID_PATTERN.matcher(id);
+        matcher.find();
+        return matcher.group("sessionId");
+    }
+
+    public static String calculateJvmRoute(String id) {
+        Matcher matcher = PersistableSessionUtils.SESSION_ID_PATTERN.matcher(id);
+        matcher.find();
+        return matcher.group("jvmRoute");
+    }
 
     private PersistableSessionUtils() {
         //utils class

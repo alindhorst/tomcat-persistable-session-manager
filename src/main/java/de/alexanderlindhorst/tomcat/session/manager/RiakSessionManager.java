@@ -5,7 +5,11 @@ package de.alexanderlindhorst.tomcat.session.manager;
 
 import java.io.IOException;
 
-import org.apache.catalina.*;
+import org.apache.catalina.LifecycleException;
+import org.apache.catalina.LifecycleState;
+import org.apache.catalina.Session;
+import org.apache.catalina.SessionEvent;
+import org.apache.catalina.SessionListener;
 import org.apache.catalina.session.ManagerBase;
 import org.apache.catalina.session.StandardSession;
 import org.slf4j.Logger;
@@ -13,8 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
-import static de.alexanderlindhorst.tomcat.session.manager.PersistableSession.calculateJvmRoute;
-import static de.alexanderlindhorst.tomcat.session.manager.PersistableSession.calculateJvmRouteAgnosticSessionId;
+import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.calculateJvmRoute;
+import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.calculateJvmRouteAgnosticSessionId;
 import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 
@@ -159,8 +163,7 @@ public class RiakSessionManager extends ManagerBase implements SessionListener {
         if (applicationEventListeners == null) {
             return;
         }
-        for (int i = 0; i < applicationEventListeners.length; i++) {
-            Object applicationEventListener = applicationEventListeners[i];
+        for (Object applicationEventListener : applicationEventListeners) {
             if (applicationEventListener instanceof SessionListener) {
                 SessionListener listener = (SessionListener) applicationEventListener;
                 listener.sessionEvent(event);
