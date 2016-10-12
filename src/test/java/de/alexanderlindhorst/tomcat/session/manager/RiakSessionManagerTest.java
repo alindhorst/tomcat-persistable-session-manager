@@ -25,7 +25,7 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import de.alexanderlindhorst.tomcat.session.TestUtils.Parameter;
-import de.alexanderlindhorst.tomcat.session.access.FakeRiakService;
+import de.alexanderlindhorst.tomcat.session.access.FakeBackendService;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.tomcat.session.TestUtils.getFieldValueFromObject;
@@ -47,6 +47,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static com.google.common.collect.Lists.newArrayList;
 
 @RunWith(MockitoJUnitRunner.class)
 public class RiakSessionManagerTest {
@@ -297,10 +298,9 @@ public class RiakSessionManagerTest {
     @Test
     public void knownServiceImplementationMakesInitSucceed() throws LifecycleException, NoSuchFieldException,
             IllegalArgumentException, IllegalAccessException {
-        instance.setServiceImplementationClassName(FakeRiakService.class.getName());
+        instance.setServiceImplementationClassName(FakeBackendService.class.getName());
         instance.init();
-        assertThat(getFieldValueFromObject(instance, "backendService").getClass().getName(), is(
-                FakeRiakService.class.getName()));
+        assertThat(getFieldValueFromObject(instance, "backendService").getClass().getName(), is(FakeBackendService.class.getName()));
     }
 
     @Test

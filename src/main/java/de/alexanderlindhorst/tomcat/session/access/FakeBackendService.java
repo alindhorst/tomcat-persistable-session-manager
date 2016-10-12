@@ -12,11 +12,12 @@ import de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase;
 import static com.google.common.collect.Maps.newHashMap;
 import static java.lang.System.currentTimeMillis;
 import static java.util.stream.Collectors.toList;
+import static com.google.common.collect.Maps.newHashMap;
 
 /**
  * @author alindhorst
  */
-public class FakeRiakService extends BackendServiceBase {
+public class FakeBackendService extends BackendServiceBase {
 
     private final Map<String, byte[]> sessionStore = newHashMap();
     private final Map<String, Long> lastAccessed = newHashMap();

@@ -29,12 +29,13 @@ import static java.lang.System.currentTimeMillis;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
+import static com.google.common.collect.Maps.newHashMap;
 
 /**
  * @author lindhrst
  */
 @RunWith(MockitoJUnitRunner.class)
-public class FakeRiakServiceTest {
+public class FakeBackendServiceTest {
 
     @Mock
     private RiakSessionManager manager;
@@ -42,11 +43,11 @@ public class FakeRiakServiceTest {
     private Context context;
     @Mock
     private Log logger;
-    private FakeRiakService instance;
+    private FakeBackendService instance;
 
     @Before
     public void setUp() {
-        instance = new FakeRiakService();
+        instance = new FakeBackendService();
         when(manager.getContext()).thenReturn(context);
         when(context.getApplicationLifecycleListeners()).thenReturn(new Object[0]);
         when(context.getLogger()).thenReturn(logger);
