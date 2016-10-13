@@ -57,7 +57,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class RiakSessionManagerTest {
+public class PersistableSessionManagerTest {
 
     @Mock
     private BackendService backendService;
