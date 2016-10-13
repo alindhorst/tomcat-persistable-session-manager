@@ -9,10 +9,44 @@
     <artifactId>tomcat-persistable-session-manager-testutils</artifactId>
     <name>Tomcat PersistableSession Manager (TestUtils)</name>
     <packaging>jar</packaging>
+    <properties>
+        <maven.test.skip>true</maven.test.skip>
+        <cobertura.skip>true</cobertura.skip>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava-collections</artifactId>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>cobertura-maven-plugin</artifactId>
+                <version>2.7</version>
+                <executions>
+                    <execution>
+                        <id>instrument-code</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>instrument</goal>
+                        </goals>
+                        <configuration>
+                            <attach>false</attach>
+                            <skip>true</skip>
+                            <instrumentation>
+                                <ignores>
+                                    <ignore>*</ignore>
+                                </ignores>
+                                <excludes>
+                                    <exclude>**/*.class</exclude>
+                                </excludes>
+                            </instrumentation>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
