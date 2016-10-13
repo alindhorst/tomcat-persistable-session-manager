@@ -15,7 +15,7 @@ import org.apache.catalina.valves.ValveBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 
@@ -31,7 +31,7 @@ public class AdjustSessionIdToJvmRouteValve extends ValveBase {
     public void invoke(Request request, Response response) throws IOException, ServletException {
         //not a known manager -> no optimization
         Manager m = request.getContext().getManager();
-        if (!(m instanceof RiakSessionManager)) {
+        if (!(m instanceof PersistableSessionManager)) {
             LOGGER.debug("No compatible session manager found, skipping execution");
             getNext().invoke(request, response);
             return;

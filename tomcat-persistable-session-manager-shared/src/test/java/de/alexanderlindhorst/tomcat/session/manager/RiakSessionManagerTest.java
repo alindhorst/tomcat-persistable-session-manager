@@ -12,7 +12,15 @@ import java.util.UUID;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionIdListener;
 
-import org.apache.catalina.*;
+import org.apache.catalina.Context;
+import org.apache.catalina.Engine;
+import org.apache.catalina.LifecycleException;
+import org.apache.catalina.LifecycleState;
+import org.apache.catalina.Manager;
+import org.apache.catalina.Session;
+import org.apache.catalina.SessionEvent;
+import org.apache.catalina.SessionIdGenerator;
+import org.apache.catalina.SessionListener;
 import org.apache.catalina.session.StandardSession;
 import org.junit.After;
 import org.junit.Before;
@@ -24,14 +32,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils.Parameter;
 import de.alexanderlindhorst.tomcat.session.access.FakeBackendService;
+import de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.Parameter;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils.getFieldValueFromObject;
-import static de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils.invokeMethod;
-import static de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils.setFieldValueForObject;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
+import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.invokeMethod;
+import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.setFieldValueForObject;
 import static java.util.stream.Collectors.toList;
 import static org.apache.catalina.Session.SESSION_CREATED_EVENT;
 import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
@@ -47,7 +55,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static com.google.common.collect.Lists.newArrayList;
 
 @RunWith(MockitoJUnitRunner.class)
 public class RiakSessionManagerTest {
@@ -67,7 +74,7 @@ public class RiakSessionManagerTest {
     @Captor
     private ArgumentCaptor<SessionEvent> sessionEventCaptor;
     @InjectMocks
-    private RiakSessionManager instance;
+    private PersistableSessionManager instance;
 
     @Before
     public void setup() throws ClassNotFoundException, IOException {
@@ -153,7 +160,7 @@ public class RiakSessionManagerTest {
         Context contextLocal = mock(Context.class);
         when(contextLocal.getParent()).thenReturn(engineLocal);
         when(contextLocal.getName()).thenReturn("/mycontext");
-        instance = new RiakSessionManager();
+        instance = new PersistableSessionManager();
         instance.setContext(contextLocal);
         setFieldValueForObject(instance, "backendService", backendService);
         String sessionId = "mysession";

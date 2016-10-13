@@ -3,7 +3,7 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
-import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionAttribute;
 
@@ -29,10 +29,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class RiakSessionTest {
+public class PersistableSessionTest {
 
     @Mock
-    private RiakSessionManager sessionManager;
+    private PersistableSessionManager sessionManager;
     @Mock
     private Context context;
     @InjectMocks

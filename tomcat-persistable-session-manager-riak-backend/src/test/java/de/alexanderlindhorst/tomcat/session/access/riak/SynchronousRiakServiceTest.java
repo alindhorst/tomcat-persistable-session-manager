@@ -1,7 +1,9 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.tomcat.persistable.session.access.riak;
+package de.alexanderlindhorst.tomcat.session.access.riak;
+
+import de.alexanderlindhorst.tomcat.session.access.riak.SynchronousRiakService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,11 +42,9 @@ import com.basho.riak.client.core.query.Namespace;
 import com.basho.riak.client.core.query.RiakObject;
 import com.basho.riak.client.core.util.BinaryValue;
 
-import de.alexanderlindhorst.tomcat.session.access.RiakAccessException;
-
 import static com.google.common.collect.Lists.newArrayList;
-import static de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils.getFieldValueFromObject;
-import static de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils.setFieldValueForObject;
+import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.setFieldValueForObject;
 import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.emptyList;

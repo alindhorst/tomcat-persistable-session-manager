@@ -27,7 +27,7 @@ import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
  *
  * @author alindhorst
  */
-public class RiakSessionManager extends ManagerBase implements SessionListener {
+public class PersistableSessionManager extends ManagerBase implements SessionListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("SessionManagement");
     private BackendService backendService;

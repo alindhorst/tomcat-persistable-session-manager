@@ -19,7 +19,7 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
-import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.never;
@@ -44,7 +44,7 @@ public class AdjustSessionIdToJvmRouteValveTest {
     @Mock
     private Valve next;
     @Mock
-    private RiakSessionManager wellKnownManager;
+    private PersistableSessionManager wellKnownManager;
     @Mock
     private PersistableSession session;
 

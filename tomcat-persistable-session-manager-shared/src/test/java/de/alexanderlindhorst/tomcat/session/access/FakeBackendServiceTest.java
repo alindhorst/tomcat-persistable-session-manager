@@ -16,20 +16,19 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
-import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils;
 
 import static com.google.common.collect.Maps.newHashMap;
-import static de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils.getFieldValueFromObject;
-import static de.alexanderlindhorst.tomcat.persistable.session.manager.testutils.TestUtils.setFieldValueForObject;
 import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.serializeSession;
+import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.getFieldValueFromObject;
+import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.setFieldValueForObject;
 import static java.lang.System.currentTimeMillis;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
-import static com.google.common.collect.Maps.newHashMap;
 
 /**
  * @author lindhrst
@@ -38,7 +37,7 @@ import static com.google.common.collect.Maps.newHashMap;
 public class FakeBackendServiceTest {
 
     @Mock
-    private RiakSessionManager manager;
+    private PersistableSessionManager manager;
     @Mock
     private Context context;
     @Mock

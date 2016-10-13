@@ -3,7 +3,7 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
-import de.alexanderlindhorst.tomcat.session.manager.RiakSessionManager;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 
@@ -31,7 +31,7 @@ import static org.mockito.Mockito.spy;
 public class PersistableSessionUtilsTest {
 
     @Mock
-    private RiakSessionManager manager;
+    private PersistableSessionManager manager;
     private PersistableSession session;
 
     @Before

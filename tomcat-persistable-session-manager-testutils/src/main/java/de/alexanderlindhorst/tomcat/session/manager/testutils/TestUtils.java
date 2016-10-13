@@ -1,7 +1,7 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.tomcat.persistable.session.manager.testutils;
+package de.alexanderlindhorst.tomcat.session.manager.testutils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
