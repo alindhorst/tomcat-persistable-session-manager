@@ -148,7 +148,9 @@ public class PersistableSessionManager extends ManagerBase implements SessionLis
                 add(session);
             }
         }
-        session.touchLastAccessedTime();
+        if (session != null) {
+            session.touchLastAccessedTime();
+        }
         return session;
     }
 
@@ -203,16 +205,16 @@ public class PersistableSessionManager extends ManagerBase implements SessionLis
         LOGGER.debug("event {}", event);
         PersistableSession session = (PersistableSession) event.getSession();
         switch (event.getType()) {
-        case SESSION_DESTROYED_EVENT:
-            remove(session);
-            break;
-        case SESSION_CREATED_EVENT:
-        case SESSION_ATTRIBUTE_SET:
-            session.setDirty(true);
-            storeSession(session);
-            break;
-        default:
-            throw new AssertionError("Unknown event type: " + event.getType());
+            case SESSION_DESTROYED_EVENT:
+                remove(session);
+                break;
+            case SESSION_CREATED_EVENT:
+            case SESSION_ATTRIBUTE_SET:
+                session.setDirty(true);
+                storeSession(session);
+                break;
+            default:
+                throw new AssertionError("Unknown event type: " + event.getType());
         }
     }
 

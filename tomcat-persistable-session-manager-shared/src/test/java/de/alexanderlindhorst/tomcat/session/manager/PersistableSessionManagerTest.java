@@ -9,9 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import javax.servlet.http.HttpSessionEvent;
-import javax.servlet.http.HttpSessionIdListener;
-
 import org.apache.catalina.Context;
 import org.apache.catalina.Engine;
 import org.apache.catalina.LifecycleException;
@@ -35,6 +32,9 @@ import org.mockito.runners.MockitoJUnitRunner;
 import de.alexanderlindhorst.tomcat.session.access.FakeBackendService;
 import de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.Parameter;
 
+import javax.servlet.http.HttpSessionEvent;
+import javax.servlet.http.HttpSessionIdListener;
+
 import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSession.SESSION_ATTRIBUTE_SET;
 import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.getFieldValueFromObject;
@@ -50,11 +50,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PersistableSessionManagerTest {
@@ -235,6 +231,15 @@ public class PersistableSessionManagerTest {
     @Test(expected = IllegalArgumentException.class)
     public void findSessionFailsWithEmptySessionId() throws IOException {
         instance.findSession("");
+    }
+
+    @Test
+    public void findSessionWillNotTouchSessionIfNoneFound() throws IOException {
+        String sessionId = "sessionId." + engine.getJvmRoute();
+
+        Session noneFound = instance.findSession(sessionId);
+
+        assertThat(noneFound, is(nullValue()));
     }
 
     @Test
