@@ -489,7 +489,7 @@ public class PersistableSessionManagerTest {
 
         when(backendService.removeExpiredSessions()).thenReturn(backendIds);
 
-        instance.processExpires();;
+        instance.processExpires();
 
         //verify
         localIds.forEach(id -> {
