@@ -17,8 +17,6 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <!-- dependencies, sorted alphabetically -->
-        <dep.catalina.version>8.0.36</dep.catalina.version>
-        <dep.cglib.version>3.2.1</dep.cglib.version>
     </properties>
     
     <dependencies>
@@ -64,11 +62,6 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava-collections</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>cglib</groupId>
-            <artifactId>cglib</artifactId>
-            <version>${dep.cglib.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
