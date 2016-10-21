@@ -5,18 +5,21 @@ package de.alexanderlindhorst.tomcat.session.manager;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.LOGGER;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author lindhrst (original author)
  */
 public final class PersistableSessionUtils {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PersistableSessionUtils.class);
     static final Pattern SESSION_ID_PATTERN = Pattern.compile("^(?<sessionId>[^\\.]+)(\\.(?<jvmRoute>.*))?$");
 
     private PersistableSessionUtils() {
@@ -40,14 +43,14 @@ public final class PersistableSessionUtils {
             return null;
         }
         try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ObjectOutputStream stream = new ObjectOutputStream(out);
-            session.writeObjectData(stream);
-            stream.flush();
-            byte[] bytes = out.toByteArray();
-            out.close();
+            byte[] bytes;
+            try (ByteArrayOutputStream out = new ByteArrayOutputStream(); ObjectOutputStream stream = new ObjectOutputStream(out)) {
+                session.writeObjectData(stream);
+                stream.flush();
+                bytes = out.toByteArray();
+            }
             return bytes;
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             LOGGER.error("Couldn't serialize session, will return null value", ex);
         }
         return null;
@@ -62,13 +65,11 @@ public final class PersistableSessionUtils {
         }
         try {
             LOGGER.debug("Deserializing from byte array of size {}", bytes.length);
-            ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-            ObjectInputStream stream = new ObjectInputStream(in);
-            emptyShell.readObjectData(stream);
-            stream.close();
-            in.close();
+            try (ByteArrayInputStream in = new ByteArrayInputStream(bytes); ObjectInputStream stream = new ObjectInputStream(in)) {
+                emptyShell.readObjectData(stream);
+            }
             return emptyShell;
-        } catch (Exception ex) {
+        } catch (IOException | ClassNotFoundException ex) {
             LOGGER.error("Couldn't deserialize session, will return null value", ex);
         }
         return null;

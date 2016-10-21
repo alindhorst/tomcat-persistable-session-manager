@@ -26,7 +26,7 @@ import com.basho.riak.client.core.query.indexes.LongIntIndex;
 import com.basho.riak.client.core.util.BinaryValue;
 import com.google.common.collect.Lists;
 
-import de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase;
+import de.alexanderlindhorst.tomcat.session.access.BackendServiceBase;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.System.currentTimeMillis;

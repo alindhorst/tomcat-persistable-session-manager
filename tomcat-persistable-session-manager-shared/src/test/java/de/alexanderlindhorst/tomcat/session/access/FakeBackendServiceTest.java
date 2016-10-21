@@ -21,7 +21,7 @@ import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
 import de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils;
 
 import static com.google.common.collect.Maps.newHashMap;
-import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
+import static de.alexanderlindhorst.tomcat.session.access.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
 import static de.alexanderlindhorst.tomcat.session.manager.PersistableSessionUtils.serializeSession;
 import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.getFieldValueFromObject;
 import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.setFieldValueForObject;

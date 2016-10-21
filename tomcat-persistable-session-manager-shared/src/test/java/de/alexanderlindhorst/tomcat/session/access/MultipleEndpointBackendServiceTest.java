@@ -1,7 +1,8 @@
 /*
  * This software is licensed under the GPL v2 (http://www.gnu.org/licenses/gpl-2.0.html).
  */
-package de.alexanderlindhorst.tomcat.session.access.riak;
+package de.alexanderlindhorst.tomcat.session.access;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +16,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
-import com.basho.riak.client.core.RiakCluster;
+import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.getFieldValueFromObject;
@@ -25,6 +26,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,33 +35,34 @@ import static org.mockito.Mockito.when;
  * @author alindhorst
  */
 @RunWith(MockitoJUnitRunner.class)
-public class MultipleEndpointSynchronousRiakServiceTest {
+public class MultipleEndpointBackendServiceTest {
 
-    private MultipleEndpointSynchronousRiakService instance;
+    private MultipleEndpointBackendService<FakeBackendService> instance;
     @Mock
-    private RiakCluster cluster;
+    PersistableSession session = mock(PersistableSession.class);
     @Mock
-    private SynchronousRiakService backend1;
+    private FakeBackendServiceTestable backend1;
     @Mock
-    private SynchronousRiakService backend2;
+    private FakeBackendServiceTestable backend2;
 
     @Before
     public void setup() throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException {
-        instance = new MultipleEndpointSynchronousRiakService();
+        instance = new MultipleEndpointBackendService<>();
         setFieldValueForObject(instance, "endpointDelegates", newArrayList(backend1, backend2));
     }
 
     @Test
     public void numberOfBackendAddressesReflectedInListOfDelegates() throws NoSuchFieldException, IllegalArgumentException,
             IllegalAccessException {
-        //override instance initialized in setupinstance = new MultipleEndpointSynchronousRiakService();
-        String address = "riak1;riak2:8087;riak3";
+        //override instance initialized in setupinstance = new MultipleEndpointBackendService();
+        String address = "a;b;c";
+        instance.setBackendServiceType(FakeBackendService.class.getCanonicalName());
         instance.setBackendAddress(address);
         instance.init();
 
         ArrayList<String> addresses = newArrayList(instance.getBackendAddress().split(";"));
         @SuppressWarnings("unchecked")
-        List<SynchronousRiakService> delegates = (List<SynchronousRiakService>) getFieldValueFromObject(instance,
+        List<FakeBackendService> delegates = (List<FakeBackendService>) getFieldValueFromObject(instance,
                 "endpointDelegates");
 
         assertThat(delegates, is(not(nullValue())));
@@ -73,24 +76,19 @@ public class MultipleEndpointSynchronousRiakServiceTest {
     }
 
     @Test
-    public void persistSessionInternalWritesToAllDelegates() {
-        String id = "id";
-        byte[] bytes = new byte[0];
+    public void persistSessionWritesToAllDelegates() {
+        instance.persistSession(session);
 
-        instance.persistSessionInternal(id, bytes);
-
-        verify(backend1).persistSessionInternal(id, bytes);
-        verify(backend2).persistSessionInternal(id, bytes);
+        verify(backend1).persistSession(session);
+        verify(backend2).persistSession(session);
     }
 
     @Test
-    public void deleteSessionInternalWritesToAllDelegates() {
-        String id = "id";
+    public void deleteSessionWritesToAllDelegates() {
+        instance.deleteSession(session);
 
-        instance.deleteSessionInternal(id);
-
-        verify(backend1).deleteSessionInternal(id);
-        verify(backend2).deleteSessionInternal(id);
+        verify(backend1).deleteSession(session);
+        verify(backend2).deleteSession(session);
     }
 
     @Test
@@ -100,7 +98,7 @@ public class MultipleEndpointSynchronousRiakServiceTest {
         when(backend1.getSessionInternal(anyString())).thenAnswer(answer);
         when(backend2.getSessionInternal(anyString())).thenAnswer(answer);
 
-        instance.getSessionInternal(id);
+        instance.getSession(session, id);
 
         assertThat(answer.getCounter(), is(1));
     }
@@ -135,7 +133,7 @@ public class MultipleEndpointSynchronousRiakServiceTest {
         expected.forEach(id -> assertThat(allExpired.contains(id), is(true)));
     }
 
-    private static class InvocationCountingAnswer implements Answer<byte[]> {
+    private class InvocationCountingAnswer implements Answer<byte[]> {
 
         private final AtomicInteger counter = new AtomicInteger();
 
@@ -148,5 +146,14 @@ public class MultipleEndpointSynchronousRiakServiceTest {
         public int getCounter() {
             return counter.get();
         }
+    }
+
+    private static class FakeBackendServiceTestable extends FakeBackendService {
+
+        @Override
+        protected byte[] getSessionInternal(String sessionId) {
+            return super.getSessionInternal(sessionId);
+        }
+
     }
 }

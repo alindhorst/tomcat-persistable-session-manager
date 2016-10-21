@@ -3,6 +3,8 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
+import de.alexanderlindhorst.tomcat.session.access.BackendService;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;

@@ -45,7 +45,7 @@ import com.basho.riak.client.core.util.BinaryValue;
 import static com.google.common.collect.Lists.newArrayList;
 import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.getFieldValueFromObject;
 import static de.alexanderlindhorst.tomcat.session.manager.testutils.TestUtils.setFieldValueForObject;
-import static de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
+import static de.alexanderlindhorst.tomcat.session.access.BackendServiceBase.SESSIONS_NEVER_EXPIRE;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.emptyList;
 import static java.util.concurrent.TimeUnit.SECONDS;

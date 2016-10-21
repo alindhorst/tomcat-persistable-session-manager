@@ -7,8 +7,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import de.alexanderlindhorst.tomcat.session.manager.BackendServiceBase;
-
 import static com.google.common.collect.Maps.newHashMap;
 import static java.lang.System.currentTimeMillis;
 import static java.util.stream.Collectors.toList;
