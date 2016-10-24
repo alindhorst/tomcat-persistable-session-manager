@@ -3,7 +3,6 @@
  */
 package de.alexanderlindhorst.tomcat.session.access;
 
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -15,6 +14,8 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 
@@ -71,7 +72,21 @@ public class MultipleEndpointBackendServiceTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void zeroBackendsThrowsException() {
+    public void nullBackendAddressThrowsException() {
+        instance.setBackendServiceType(FakeBackendService.class.getCanonicalName());
+        instance.init();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void nullBackendTypeThrowsException() {
+        instance.setBackendAddress("something");
+        instance.init();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void uninstantiableBackendTypeThrowsException() {
+        instance.setBackendServiceType("java.lang.Integer");
+        instance.setBackendAddress("something");
         instance.init();
     }
 
@@ -131,6 +146,37 @@ public class MultipleEndpointBackendServiceTest {
         List<String> allExpired = instance.getExpiredSessionIds();
 
         expected.forEach(id -> assertThat(allExpired.contains(id), is(true)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void unknownTypeLeadsToIllegalArgumentException() {
+        instance.setBackendServiceType("not.a.known.type");
+    }
+
+    @Test
+    public void sessionManagementLoggerCanBeRead() throws NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
+        Logger logger = LoggerFactory.getLogger("TestLogger");
+        instance.setSessionManagementLogger(logger);
+        Logger loggerFromInstance = (Logger) getFieldValueFromObject(instance, "sessionManagementLogger");
+
+        assertThat(loggerFromInstance, is(logger));
+    }
+
+    @Test
+    public void sessionExpiryThresholdCanBeRead() throws NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
+        instance.setSessionExpiryThreshold(10l);
+        long thresholdFromObject = (long) getFieldValueFromObject(instance, "sessionExpiryThreshold");
+
+        assertThat(thresholdFromObject, is(10l));
+    }
+
+    @Test
+    public void shutdownIsSetOnAllBackends() {
+        ArrayList<FakeBackendServiceTestable> expected = newArrayList(backend1, backend2);
+
+        instance.shutdown();
+
+        expected.forEach(backend -> verify(backend).shutdown());
     }
 
     private class InvocationCountingAnswer implements Answer<byte[]> {

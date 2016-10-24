@@ -15,6 +15,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
@@ -232,5 +234,19 @@ public class FakeBackendServiceTest {
         assertThat(removedSessions.get(0), is("3"));
         assertThat(sessionStoreReadBack.size(), is(2));
         assertThat(lastAccessReadBack.size(), is(2));
+    }
+
+    @Test
+    public void getSessionManagementLoggerReturnsSetLogger() {
+        Logger testLogger = LoggerFactory.getLogger("TestLogger");
+        instance.setSessionManagementLogger(testLogger);
+
+        assertThat(instance.getSessionManagementLogger(), is(testLogger));
+    }
+
+    @Test
+    public void shutdownCorrectlySignaled() {
+        instance.shutdown();
+        assertThat(instance.isShuttingDown(), is(true));
     }
 }

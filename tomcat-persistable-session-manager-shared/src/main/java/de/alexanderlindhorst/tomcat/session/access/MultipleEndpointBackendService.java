@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 
 import com.google.common.collect.Lists;
 
-import de.alexanderlindhorst.tomcat.session.access.BackendService;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -29,7 +28,7 @@ public class MultipleEndpointBackendService<TYPE extends BackendService> impleme
     private List<TYPE> endpointDelegates;
     private Class<TYPE> type;
     private String backendAddress;
-    private long sessionExiryThreshold = -1l;
+    private long sessionExpiryThreshold = -1l;
     private Logger sessionManagementLogger = null;
 
     @Override
@@ -59,7 +58,7 @@ public class MultipleEndpointBackendService<TYPE extends BackendService> impleme
                 throw new IllegalStateException(ex);
             }
             backendService.setBackendAddress(value);
-            backendService.setSessionExpiryThreshold(sessionExiryThreshold);
+            backendService.setSessionExpiryThreshold(sessionExpiryThreshold);
             backendService.setSessionManagementLogger(sessionManagementLogger);
             backendService.init();
             endpointDelegates.add(backendService);
@@ -106,12 +105,12 @@ public class MultipleEndpointBackendService<TYPE extends BackendService> impleme
 
     @Override
     public void shutdown() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        endpointDelegates.forEach(delegate -> delegate.shutdown());
     }
 
     @Override
     public void setSessionExpiryThreshold(long sessionExpiryThresholdMilliSeconds) {
-        this.sessionExiryThreshold = sessionExpiryThresholdMilliSeconds;
+        this.sessionExpiryThreshold = sessionExpiryThresholdMilliSeconds;
     }
 
     @Override
