@@ -1,5 +1,6 @@
 # Tomcat Persistable Session Manager
 Attempt at creating a SessionManager capable of running distributed web applications by persisting session state to a global backend.
+[![Build Status](https://travis-ci.org/alindhorst/tomcat-persistable-session-manager.svg?branch=master)](https://travis-ci.org/alindhorst/tomcat-persistable-session-manager)
 
 ## Project structure
 The project consists of several subprojects which are:
