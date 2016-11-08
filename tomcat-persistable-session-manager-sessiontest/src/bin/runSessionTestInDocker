@@ -1,0 +1,9 @@
+#!/bin/bash
+DNS_ID=$(sudo docker ps|grep -v "^CONTAINER"|awk '/dns2consulmapper/{printf "%s\n",$1}'|head -1)
+if [[ -z $DNS_ID ]]; then
+ echo -e "\n\n\tDNS service not available. Did you run ${0%/*}/runDnsMasqInDocker?\n\n"
+ exit 1
+fi
+DNS_IP=$(sudo docker inspect $DNS_ID|jq .[].NetworkSettings.IPAddress|sed 's/"//g'|awk '{printf "%s",$1}')
+
+sudo docker run -ti --rm --dns $DNS_IP sessiontest

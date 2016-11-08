@@ -1,0 +1,12 @@
+{
+    "ID": "st<INDEX>",
+  "Name": "sessiontest",
+  "Address": "<IP>",
+  "Port": 8080,
+  "Service": "sessiontest",
+  "Check": {
+    "HTTP": "http://<IP>:8080/sessiontest/Health",
+    "Interval": "1s",
+    "Status": "warning"
+  }
+}

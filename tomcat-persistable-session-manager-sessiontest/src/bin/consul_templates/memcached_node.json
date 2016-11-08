@@ -1,0 +1,5 @@
+{
+  "Datacenter": "dc1",
+    "Node": "memcached",
+  "Address": "<IP>"
+}

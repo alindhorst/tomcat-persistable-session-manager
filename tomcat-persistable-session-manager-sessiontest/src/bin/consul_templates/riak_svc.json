@@ -1,0 +1,12 @@
+{
+    "ID": "riak<INDEX>",
+  "Name": "riak",
+  "Address": "<IP>",
+  "Port": 8098,
+  "Service": "riak",
+  "Check": {
+    "HTTP": "http://<IP>:8098/ping",
+    "Interval": "15s",
+    "Status": "warning"
+  }
+}

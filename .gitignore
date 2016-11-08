@@ -1,4 +1,4 @@
 nbproject
 nb-*.xml
 target
-
+**/jmeter.log

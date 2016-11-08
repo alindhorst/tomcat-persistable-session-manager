@@ -1,0 +1,10 @@
+#!/bin/bash
+
+CONSUL_ID=$(sudo docker ps|grep -v "^CONTAINER"|awk '/\<consul\>/{printf "%s\n",$1}'|head -1)
+if [[ -z $CONSUL_ID ]]; then
+ echo -e "\n\n\tConsul service not available. Did you run ${0%/*}/runConsulInDocker?\n\n"
+ exit 1
+fi
+CONSUL_IP=$(sudo docker inspect $CONSUL_ID|jq .[].NetworkSettings.IPAddress|sed 's/"//g'|awk '{printf "%s",$1}')
+
+sudo docker run --rm --name dns2consulmapper --cap-add=NET_ADMIN andyshinn/dnsmasq --max-ttl=0 --neg-ttl=0 -S "/consul/0.17.172.in-addr.arpa/$CONSUL_IP#8600"

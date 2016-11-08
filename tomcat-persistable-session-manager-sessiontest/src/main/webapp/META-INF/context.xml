@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context path="/sessiontest">
+    <Manager
+        className="de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager"
+        serviceImplementationClassName="de.alexanderlindhorst.tomcat.session.access.riak.SynchronousRiakService"
+        serviceBackendAddress="riak.service.consul:8087"
+        sessionExpiryThreshold="30000">
+        <SessionIdGenerator className="org.apache.catalina.util.StandardSessionIdGenerator" jvmRoute="${HOSTNAME}"/>
+    </Manager>
+    <Valve className="de.alexanderlindhorst.tomcat.session.valve.AdjustSessionIdToJvmRouteValve"/>
+</Context>

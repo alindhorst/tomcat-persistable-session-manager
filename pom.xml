@@ -13,6 +13,7 @@
         <module>tomcat-persistable-session-manager-shared</module>
         <module>tomcat-persistable-session-manager-riak-backend</module>
         <module>tomcat-persistable-session-manager-testutils</module>
+        <module>tomcat-persistable-session-manager-sessiontest</module>
     </modules>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
