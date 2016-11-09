@@ -4,7 +4,7 @@
     <parent>
         <groupId>de.alexanderlindhorst</groupId>
         <artifactId>tomcat-persistable-session-manager</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.0</version>
     </parent>
     <artifactId>sessiontest</artifactId>
     <packaging>war</packaging>
@@ -154,7 +154,7 @@
                 <dependency>
                     <groupId>de.alexanderlindhorst</groupId>
                     <artifactId>tomcat-persistable-session-manager-riak-backend</artifactId>
-                    <version>1.0-SNAPSHOT</version>
+                    <version>1.0</version>
                     <scope>runtime</scope>
                     <classifier>shaded</classifier>
                 </dependency>
