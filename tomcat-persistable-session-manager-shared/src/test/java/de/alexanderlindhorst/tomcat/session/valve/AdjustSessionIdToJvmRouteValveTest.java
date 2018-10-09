@@ -16,7 +16,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
 
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
@@ -25,12 +24,13 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.MockitoJUnitRunner;
 
 /**
  *
  * @author alindhorst
  */
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class AdjustSessionIdToJvmRouteValveTest {
 
     @Mock
