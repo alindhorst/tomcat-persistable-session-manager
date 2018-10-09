@@ -66,7 +66,7 @@ import static org.mockito.Mockito.when;
 /**
  * @author lindhrst
  */
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class SynchronousRiakServiceTest {
 
     @Mock
@@ -458,6 +458,7 @@ public class SynchronousRiakServiceTest {
             TimeoutException {
         //override previously initialized object
         shutdownFuture = mock(Future.class);
+        //set up an exception, so we can see it not getting fired (graceful shutdown)
         when(shutdownFuture.get(any(Long.class), any(TimeUnit.class))).thenThrow(new InterruptedException());
         service.shutdown();
     }
