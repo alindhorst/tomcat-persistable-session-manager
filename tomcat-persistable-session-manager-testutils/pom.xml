@@ -19,6 +19,7 @@
             <artifactId>guava-collections</artifactId>
         </dependency>
     </dependencies>
+    <!--
     <build>
         <plugins>
             <plugin>
@@ -49,4 +50,5 @@
             </plugin>
         </plugins>
     </build>
+        -->
 </project>
