@@ -3,7 +3,6 @@
  */
 package de.alexanderlindhorst.tomcat.session.access.riak;
 
-import de.alexanderlindhorst.tomcat.session.access.riak.SynchronousRiakService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,12 +22,13 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakCommand;
 import com.basho.riak.client.api.commands.indexes.IntIndexQuery;
 import com.basho.riak.client.core.FutureOperation;
 import com.basho.riak.client.core.RiakCluster;
@@ -202,15 +202,15 @@ public class SynchronousRiakServiceTest {
 
     @Test(expected = RiakAccessException.class)
     @SuppressWarnings("unchecked")
-    public void executionExceptionWhilePersistingThrowsRiakAccessException() {
-        when(cluster.execute(any(FutureOperation.class))).thenThrow(ExecutionException.class);
+    public void executionExceptionWhilePersistingThrowsRiakAccessException() throws ExecutionException, InterruptedException {
+        doThrow(ExecutionException.class).when(client).execute(any(RiakCommand.class));
         service.persistSessionInternal("any", bytes);
     }
 
     @Test(expected = RiakAccessException.class)
     @SuppressWarnings("unchecked")
-    public void interruptedExceptionWhilePersistingThrowsRiakAccessException() {
-        when(cluster.execute(any(FutureOperation.class))).thenThrow(InterruptedException.class);
+    public void interruptedExceptionWhilePersistingThrowsRiakAccessException() throws ExecutionException, InterruptedException {
+        doThrow(ExecutionException.class).when(client).execute(any(RiakCommand.class));
         service.persistSessionInternal("any", bytes);
     }
 
@@ -253,15 +253,15 @@ public class SynchronousRiakServiceTest {
 
     @Test(expected = RiakAccessException.class)
     @SuppressWarnings("unchecked")
-    public void executionExceptionWhileGettingSessionThrowsRiakAccessException() {
-        when(cluster.execute(any(FutureOperation.class))).thenThrow(ExecutionException.class);
+    public void executionExceptionWhileGettingSessionThrowsRiakAccessException() throws ExecutionException, InterruptedException {
+        doThrow(ExecutionException.class).when(client).execute(any(RiakCommand.class));
         service.getSessionInternal("any");
     }
 
     @Test(expected = RiakAccessException.class)
     @SuppressWarnings("unchecked")
-    public void interruptedExceptionWhileGettingSessionThrowsRiakAccessException() {
-        when(cluster.execute(any(FutureOperation.class))).thenThrow(InterruptedException.class);
+    public void interruptedExceptionWhileGettingSessionThrowsRiakAccessException() throws ExecutionException, InterruptedException {
+        doThrow(InterruptedException.class).when(client).execute(any(RiakCommand.class));
         service.getSessionInternal("any");
     }
 
@@ -279,15 +279,15 @@ public class SynchronousRiakServiceTest {
 
     @Test(expected = RiakAccessException.class)
     @SuppressWarnings("unchecked")
-    public void executionExceptionWhileDeletingSessionThrowsRiakAccessException() {
-        when(cluster.execute(any(FutureOperation.class))).thenThrow(ExecutionException.class);
+    public void executionExceptionWhileDeletingSessionThrowsRiakAccessException() throws ExecutionException, InterruptedException {
+        doThrow(ExecutionException.class).when(client).execute(any(RiakCommand.class));
         service.deleteSessionInternal("any");
     }
 
     @Test(expected = RiakAccessException.class)
     @SuppressWarnings("unchecked")
-    public void interruptedExceptionWhileDeletingSessionThrowsRiakAccessException() {
-        when(cluster.execute(any(FutureOperation.class))).thenThrow(InterruptedException.class);
+    public void interruptedExceptionWhileDeletingSessionThrowsRiakAccessException() throws ExecutionException, InterruptedException {
+        doThrow(InterruptedException.class).when(client).execute(any(RiakCommand.class));
         service.deleteSessionInternal("any");
     }
 
