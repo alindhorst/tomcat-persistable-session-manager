@@ -3,7 +3,6 @@
  */
 package de.alexanderlindhorst.tomcat.session.access.riak;
 
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.api.RiakCommand;
 import com.basho.riak.client.api.commands.indexes.IntIndexQuery;
+import com.basho.riak.client.api.commands.kv.DeleteValue;
 import com.basho.riak.client.core.FutureOperation;
 import com.basho.riak.client.core.RiakCluster;
 import com.basho.riak.client.core.RiakFuture;
@@ -361,6 +361,7 @@ public class SynchronousRiakServiceTest {
         doAnswer(new MultipleIntIndexQueryResponseAnswer(response1, response2, response3)).when(client).execute(
                 any(IntIndexQuery.class));
         service.setSessionExpiryThreshold(30000);
+        doAnswer(new EmptyResponseAnswer()).when(client).execute(any(DeleteValue.class));
 
         List<String> expiredSessionIds = service.removeExpiredSessions();
 
@@ -383,6 +384,7 @@ public class SynchronousRiakServiceTest {
         QueryOverride.ResponseOverride response2 = new QueryOverride.ResponseOverride(batch2);
         doAnswer(new MultipleIntIndexQueryResponseAnswer(response1, response2)).when(client).execute(any(IntIndexQuery.class));
         service.setSessionExpiryThreshold(30000);
+        doAnswer(new EmptyResponseAnswer()).when(client).execute(any(DeleteValue.class));
 
         List<String> expiredSessionIds = service.removeExpiredSessions();
 
@@ -405,6 +407,7 @@ public class SynchronousRiakServiceTest {
         QueryOverride.ResponseOverride response2 = new QueryOverride.ResponseOverride(batch2);
         doAnswer(new MultipleIntIndexQueryResponseAnswer(response1, response2)).when(client).execute(any(IntIndexQuery.class));
         service.setSessionExpiryThreshold(30000);
+        doAnswer(new EmptyResponseAnswer()).when(client).execute(any(DeleteValue.class));
 
         List<String> expiredSessionIds = service.removeExpiredSessions();
 
@@ -509,6 +512,15 @@ public class SynchronousRiakServiceTest {
             QueryOverride.ResponseOverride response = responses.get(index % responses.size());
             index++;
             return response;
+        }
+
+    }
+
+    private class EmptyResponseAnswer implements Answer<RiakCommand<Void, Location>> {
+
+        @Override
+        public RiakCommand<Void, Location> answer(InvocationOnMock invocation) throws Throwable {
+            return null;
         }
 
     }
