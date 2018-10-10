@@ -3,3 +3,5 @@ nb-*.xml
 target
 **/jmeter.log
 .DS_Store
+/tomcat-persistable-session-manager-shared/target}/
+/tomcat-persistable-session-manager-riak-backend/target}/
