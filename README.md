@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/alindhorst/tomcat-persistable-session-manager.svg?branch=master)](https://travis-ci.org/alindhorst/tomcat-persistable-session-manager)
+![CodeQL](https://github.com/alindhorst/tomcat-persistable-session-manager/workflows/CodeQL/badge.svg)
 # Tomcat Persistable Session Manager
 Attempt at creating a SessionManager capable of running distributed web applications by persisting session state to a global backend.
 
