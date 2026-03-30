@@ -20,7 +20,7 @@ import org.mockito.Mock;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
 
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;

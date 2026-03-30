@@ -24,14 +24,14 @@
         <dep.catalina.version>8.0.36</dep.catalina.version>
         <dep.cglib.version>3.2.1</dep.cglib.version>
         <dep.guava.version>r03</dep.guava.version>
-        <dep.jacoco.version>0.8.6</dep.jacoco.version>
-        <dep.junit.version>4.13.1</dep.junit.version>
-        <dep.logback.version>1.2.3</dep.logback.version>
-        <dep.maven.compiler.version>3.8.0</dep.maven.compiler.version>
+        <dep.jacoco.version>0.8.12</dep.jacoco.version>
+        <dep.junit.version>4.13.2</dep.junit.version>
+        <dep.logback.version>1.2.13</dep.logback.version>
+        <dep.maven.compiler.version>3.13.0</dep.maven.compiler.version>
         <dep.maven.project-info.version>2.9</dep.maven.project-info.version>
         <dep.maven.site.version>3.7.1</dep.maven.site.version>
-        <dep.maven.surefire.version>2.22.0</dep.maven.surefire.version>
-        <dep.mockito.version>3.6.0</dep.mockito.version>
+        <dep.maven.surefire.version>3.2.5</dep.maven.surefire.version>
+        <dep.mockito.version>5.11.0</dep.mockito.version>
         <dep.slf4j.version>1.7.30</dep.slf4j.version>
     </properties>
     <dependencyManagement>

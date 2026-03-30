@@ -25,7 +25,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -110,8 +111,8 @@ public class MultipleEndpointBackendServiceTest {
     public void getSessionInternalFetchesFromExactlyOneBackend() {
         String id = "id";
         InvocationCountingAnswer answer = new InvocationCountingAnswer();
-        when(backend1.getSessionInternal(anyString())).thenAnswer(answer);
-        when(backend2.getSessionInternal(anyString())).thenAnswer(answer);
+        when(backend1.getSession(any(PersistableSession.class), anyString())).thenAnswer(answer);
+        when(backend2.getSession(any(PersistableSession.class), anyString())).thenAnswer(answer);
 
         instance.getSession(session, id);
 
@@ -179,14 +180,14 @@ public class MultipleEndpointBackendServiceTest {
         expected.forEach(backend -> verify(backend).shutdown());
     }
 
-    private class InvocationCountingAnswer implements Answer<byte[]> {
+    private class InvocationCountingAnswer implements Answer<Object> {
 
         private final AtomicInteger counter = new AtomicInteger();
 
         @Override
-        public byte[] answer(InvocationOnMock invocation) throws Throwable {
+        public Object answer(InvocationOnMock invocation) throws Throwable {
             counter.incrementAndGet();
-            return new byte[0];
+            return null;
         }
 
         public int getCounter() {
