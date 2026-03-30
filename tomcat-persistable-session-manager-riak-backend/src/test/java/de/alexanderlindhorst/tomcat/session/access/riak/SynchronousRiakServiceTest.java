@@ -30,6 +30,7 @@ import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.api.RiakCommand;
 import com.basho.riak.client.api.commands.indexes.IntIndexQuery;
 import com.basho.riak.client.api.commands.kv.DeleteValue;
+import com.basho.riak.client.api.commands.kv.FetchValue;
 import com.basho.riak.client.core.FutureOperation;
 import com.basho.riak.client.core.RiakCluster;
 import com.basho.riak.client.core.RiakFuture;
@@ -431,25 +432,71 @@ public class SynchronousRiakServiceTest {
         assertThat(expiredSessionIds.isEmpty(), is(true));
     }
 
-    @Test
-    public void getExpiredSessionIdsGracefullyHandlesInterruptedException() throws ExecutionException, InterruptedException {
-        doThrow(new InterruptedException()).when(client).execute((any(IntIndexQuery.class)));
+    @Test(expected = RiakAccessException.class)
+    public void getExpiredSessionIdsThrowsRiakAccessExceptionOnInterruptedException()
+            throws ExecutionException, InterruptedException {
+        doThrow(new InterruptedException()).when(client).execute(any(IntIndexQuery.class));
         service.setSessionExpiryThreshold(30000);
+        service.getExpiredSessionIds();
+    }
 
-        List<String> expiredSessionIds = service.getExpiredSessionIds();
-
-        assertThat(expiredSessionIds.isEmpty(), is(true));
+    @Test(expected = RiakAccessException.class)
+    public void getExpiredSessionIdsThrowsRiakAccessExceptionOnExecutionException()
+            throws ExecutionException, InterruptedException {
+        doThrow(new ExecutionException(new RuntimeException("query failed"))).when(client).execute(any(IntIndexQuery.class));
+        service.setSessionExpiryThreshold(30000);
+        service.getExpiredSessionIds();
     }
 
     @Test
-    public void getExpiredSessionIdsGracefullyHandlesExecutionException() throws ExecutionException, InterruptedException {
-        doThrow(new ExecutionException(new RuntimeException("just for the hell of it"))).
-                when(client).execute((any(IntIndexQuery.class)));
+    public void getSessionInternalRetriesOnExecutionExceptionAndSucceedsOnThirdAttempt()
+            throws ExecutionException, InterruptedException {
+        RiakObject riakObject = new RiakObject();
+        riakObject.setValue(BinaryValue.create(bytes));
+        FetchValue.Response fetchValueResponse = mock(FetchValue.Response.class);
+        when(fetchValueResponse.getValue(RiakObject.class)).thenReturn(riakObject);
+
+        doThrow(new ExecutionException(new RuntimeException("transient")))
+                .doThrow(new ExecutionException(new RuntimeException("transient")))
+                .doReturn(fetchValueResponse)
+                .when(client).execute(any(RiakCommand.class));
+
+        byte[] result = service.getSessionInternal("sessionId");
+
+        assertThat(result, is(not(nullValue())));
+        verify(client, times(3)).execute(any(RiakCommand.class));
+    }
+
+    @Test(expected = RiakAccessException.class)
+    public void getSessionInternalThrowsRiakAccessExceptionAfterExhaustingRetries()
+            throws ExecutionException, InterruptedException {
+        doThrow(new ExecutionException(new RuntimeException("persistent failure")))
+                .when(client).execute(any(RiakCommand.class));
+        service.getSessionInternal("sessionId");
+    }
+
+    @Test
+    public void removeExpiredSessionsDoesNotDeleteIdFoundInMultiplePages()
+            throws ExecutionException, InterruptedException {
+        // page 1: ids 0-2, page 2: ids 1-3 (1+2 are duplicates), page 3: ids 3 (duplicate), page 4: empty
+        ArrayList<String> page1 = newArrayList("0", "1", "2");
+        ArrayList<String> page2 = newArrayList("1", "2", "3");
+        ArrayList<String> page3 = newArrayList("3");
+        ArrayList<String> page4 = newArrayList();
+        doAnswer(new MultipleIntIndexQueryResponseAnswer(
+                new QueryOverride.ResponseOverride(page1),
+                new QueryOverride.ResponseOverride(page2),
+                new QueryOverride.ResponseOverride(page3),
+                new QueryOverride.ResponseOverride(page4)
+        )).when(client).execute(any(IntIndexQuery.class));
+        doAnswer(new EmptyResponseAnswer()).when(client).execute(any(DeleteValue.class));
         service.setSessionExpiryThreshold(30000);
 
-        List<String> expiredSessionIds = service.getExpiredSessionIds();
+        List<String> removed = service.removeExpiredSessions();
 
-        assertThat(expiredSessionIds.isEmpty(), is(true));
+        assertThat(removed.size(), is(4));
+        // delete must be called exactly once per unique id
+        verify(client, times(4)).execute(any(DeleteValue.class));
     }
 
     @Test

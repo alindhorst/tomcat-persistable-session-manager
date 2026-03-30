@@ -5,7 +5,9 @@ package de.alexanderlindhorst.tomcat.session.access.riak;
 
 import java.net.UnknownHostException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -42,7 +44,33 @@ public class SynchronousRiakService extends BackendServiceBase {
     private static final Namespace SESSIONS = new Namespace("SESSIONS");
     private static final int BATCH_SIZE = 1000;
     private static final String LAST_ACCESSED = "_lastAccessed";
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+    private static final long RETRY_BACKOFF_MS = 100;
     private RiakClient client;
+
+    @FunctionalInterface
+    private interface RiakOperation<T> {
+        T execute() throws ExecutionException, InterruptedException;
+    }
+
+    private <T> T executeWithRetry(RiakOperation<T> operation) throws ExecutionException, InterruptedException {
+        ExecutionException lastException = null;
+        for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                return operation.execute();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw e;
+            } catch (ExecutionException e) {
+                lastException = e;
+                if (attempt < MAX_RETRY_ATTEMPTS) {
+                    LOGGER.warn("Riak operation failed on attempt {}/{}, retrying", attempt, MAX_RETRY_ATTEMPTS, e);
+                    MILLISECONDS.sleep(RETRY_BACKOFF_MS);
+                }
+            }
+        }
+        throw lastException;
+    }
 
     @Override
     protected void persistSessionInternal(String sessionId, byte[] bytes) {
@@ -51,27 +79,24 @@ public class SynchronousRiakService extends BackendServiceBase {
         }
         LOGGER.debug("persistSessionInternal {}", sessionId);
         try {
-            //look up in indices
-            Location location = new Location(SESSIONS, sessionId);
-            RiakObject riakObject = getRiakObjectForSessionId(location);
-            if (riakObject == null) {
-                riakObject = new RiakObject();
-            } else {
-                //remove from indices with old values
-                riakObject.getIndexes().getIndex(LongIntIndex.named(LAST_ACCESSED)).removeAll();
-            }
-
-            //update object
-            riakObject.setValue(BinaryValue.create(bytes));
-            riakObject.getIndexes().getIndex(LongIntIndex.named(LAST_ACCESSED)).add(currentTimeMillis());
-
-            //store updated object
-            StoreValue storeOp = new StoreValue.Builder(riakObject)
-                    .withLocation(location)
-                    .build();
-            StoreValue.Response response = client.execute(storeOp);
-            LOGGER.debug("persistSessionInternal - Response: {}", response);
-        } catch (ExecutionException | InterruptedException exception) {
+            executeWithRetry(() -> {
+                Location location = new Location(SESSIONS, sessionId);
+                RiakObject existing = getRiakObjectForSessionId(location);
+                RiakObject riakObject = (existing != null) ? existing : new RiakObject();
+                if (existing != null) {
+                    riakObject.getIndexes().getIndex(LongIntIndex.named(LAST_ACCESSED)).removeAll();
+                }
+                riakObject.setValue(BinaryValue.create(bytes));
+                riakObject.getIndexes().getIndex(LongIntIndex.named(LAST_ACCESSED)).add(currentTimeMillis());
+                StoreValue storeOp = new StoreValue.Builder(riakObject).withLocation(location).build();
+                StoreValue.Response response = client.execute(storeOp);
+                LOGGER.debug("persistSessionInternal - Response: {}", response);
+                return null;
+            });
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RiakAccessException("Interrupted while persisting session", e);
+        } catch (ExecutionException exception) {
             throw new RiakAccessException("Couldn't persist session", exception);
         }
     }
@@ -84,12 +109,14 @@ public class SynchronousRiakService extends BackendServiceBase {
         try {
             LOGGER.debug("getSessionInternal {}", sessionId);
             Location location = new Location(SESSIONS, sessionId);
-            RiakObject value = getRiakObjectForSessionId(location);
-            if (value == null) {
-                return null;
-            }
-            return value.getValue().getValue();
-        } catch (ExecutionException | InterruptedException ex) {
+            return executeWithRetry(() -> {
+                RiakObject value = getRiakObjectForSessionId(location);
+                return (value == null) ? null : value.getValue().getValue();
+            });
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RiakAccessException("Interrupted while fetching session " + sessionId, e);
+        } catch (ExecutionException ex) {
             throw new RiakAccessException("Couldn't fetch session " + sessionId, ex);
         }
     }
@@ -103,8 +130,11 @@ public class SynchronousRiakService extends BackendServiceBase {
             LOGGER.debug("deleteSessionInternal {}", sessionId);
             Location location = new Location(SESSIONS, sessionId);
             DeleteValue deleteValue = new DeleteValue.Builder(location).build();
-            client.execute(deleteValue);
-        } catch (ExecutionException | InterruptedException ex) {
+            executeWithRetry(() -> { client.execute(deleteValue); return null; });
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RiakAccessException("Interrupted while deleting session " + sessionId, e);
+        } catch (ExecutionException ex) {
             throw new RiakAccessException("Couldn't delete session " + sessionId, ex);
         }
     }
@@ -158,19 +188,19 @@ public class SynchronousRiakService extends BackendServiceBase {
     @Override
     public List<String> removeExpiredSessions() {
         List<String> accumulated = Lists.newArrayList();
+        Set<String> processedIds = new HashSet<>();
         List<String> expiredSessionIds = getExpiredSessionIds();
         while (!expiredSessionIds.isEmpty()) {
-            expiredSessionIds.forEach(id -> {
-                deleteSessionInternal(id);
-                accumulated.add(id);
-            });
-            //don't wait if the last batch wasn't maxed up
-            if (expiredSessionIds.size() == BATCH_SIZE) {
-                try {
-                    MILLISECONDS.sleep(500);
-                } catch (InterruptedException ex) {
-                    LOGGER.warn("Interruption occured while waiting before the next batch to be fetched", ex);
+            boolean anyNew = false;
+            for (String id : expiredSessionIds) {
+                if (processedIds.add(id)) {
+                    deleteSessionInternal(id);
+                    accumulated.add(id);
+                    anyNew = true;
                 }
+            }
+            if (!anyNew) {
+                break;
             }
             expiredSessionIds = getExpiredSessionIds();
         }
@@ -186,8 +216,11 @@ public class SynchronousRiakService extends BackendServiceBase {
                 return response.getEntries().stream()
                         .map(entry -> entry.getRiakObjectLocation().getKeyAsString())
                         .collect(toList());
-            } catch (ExecutionException | InterruptedException ex) {
-                LOGGER.error("Interruption while executing query", ex);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new RiakAccessException("Interrupted while querying expired sessions", ex);
+            } catch (ExecutionException ex) {
+                throw new RiakAccessException("Failed to query expired sessions", ex);
             }
         }
         return Collections.<String>emptyList();
