@@ -3,6 +3,9 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionManager;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSession;
 import de.alexanderlindhorst.tomcat.session.manager.PersistableSessionAttribute;
@@ -61,6 +64,35 @@ public class PersistableSessionTest {
         assertThat(captor.getValue().getSession(), is(session));
         assertThat(captor.getValue().getType(), is(SESSION_ATTRIBUTE_SET));
         assertThat(captor.getValue().getData(), is(new PersistableSessionAttribute(name, value)));
+    }
+
+    @Test
+    public void dirtyFlagRemainsConsistentUnderConcurrentAccess() throws InterruptedException {
+        int threadCount = 20;
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threadCount);
+
+        for (int i = 0; i < threadCount; i++) {
+            final int idx = i;
+            new Thread(() -> {
+                try {
+                    start.await();
+                    if (idx % 2 == 0) {
+                        session.setDirty(true);
+                    } else {
+                        session.isDirty();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            }).start();
+        }
+
+        start.countDown();
+        done.await(5, TimeUnit.SECONDS);
+        assertThat(session.isDirty(), is(true));
     }
 
     @Test

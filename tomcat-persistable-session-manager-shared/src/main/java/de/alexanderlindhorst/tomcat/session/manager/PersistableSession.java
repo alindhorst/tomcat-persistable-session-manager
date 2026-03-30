@@ -3,6 +3,8 @@
  */
 package de.alexanderlindhorst.tomcat.session.manager;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
 
@@ -15,7 +17,7 @@ public class PersistableSession extends StandardSession {
 
     public static final String SESSION_ATTRIBUTE_SET = "SESSION_ATTRIBUTE_SET";
     private static final long serialVersionUID = 2L;
-    private transient boolean dirty = false;
+    private transient AtomicBoolean dirty = new AtomicBoolean(false);
     private transient long lastAccessedLocally = System.currentTimeMillis();
 
     public PersistableSession(Manager manager) {
@@ -27,11 +29,11 @@ public class PersistableSession extends StandardSession {
     }
 
     public boolean isDirty() {
-        return dirty;
+        return dirty.get();
     }
 
     public void setDirty(boolean dirty) {
-        this.dirty = dirty;
+        this.dirty.set(dirty);
     }
 
     @Override
