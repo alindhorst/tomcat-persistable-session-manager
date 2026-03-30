@@ -143,11 +143,7 @@ public class PersistableSessionManager extends ManagerBase implements SessionLis
                     session = (PersistableSession) super.findSession(newId);
                     if (session == null) {
                         session = backendService.getSession(getSessionShell(), jvmRouteAgnosticSessionId);
-                        if (session == null) {
-                            LOGGER.warn("Creating a new session for passed in id {} as nothing could be found in the backend.\n"
-                                    + "This might be an exploitation attempt.");
-                            session = (PersistableSession) createSession(newId);
-                        } else {
+                        if (session != null) {
                             LOGGER.debug("session found, setting flags");
                             //reinitialize transient fields
                             session.setManager(this);

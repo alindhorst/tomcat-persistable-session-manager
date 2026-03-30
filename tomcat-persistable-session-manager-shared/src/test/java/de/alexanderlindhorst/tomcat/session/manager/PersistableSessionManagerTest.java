@@ -126,31 +126,33 @@ public class PersistableSessionManagerTest {
     }
 
     @Test
-    public void createSessionSignalsNewSession() throws IOException {
+    public void findSessionReturnsNullWhenBackendMisses() throws IOException {
         String sessionId = "mySession.host1"; //context gives "host" as jvmroute
         when(backendService.getSession(any(PersistableSession.class), any(String.class))).thenReturn(null);
-        when(context.getApplicationEventListeners()).thenReturn(new Object[]{sessionIdListener, sessionListener});
-        instance.findSession(sessionId);
-
-        verify(sessionListener).sessionEvent(sessionEventCaptor.capture());
-        SessionEvent event = sessionEventCaptor.getValue();
-        PersistableSession session = (PersistableSession) event.getSession();
-        assertThat(event.getType(), is(SESSION_CREATED_EVENT));
-        assertThat(session.getId(), is("mySession.host"));
-        assertThat(session.getPersistenceKey(), is("mySession"));
-        assertThat(session.getId(), is("mySession.host"));
+        Session result = instance.findSession(sessionId);
+        assertThat(result, is(nullValue()));
     }
 
     @Test
-    public void createSessionAttemptsToSignalNewSessionWithoutListeners() throws IOException {
-
-        String sessionId = "mySession.host1"; //context gives "host" as jvmroute
+    public void findSessionDoesNotFireSessionCreatedEventOnBackendMiss() throws IOException {
+        String sessionId = "mySession.host1";
         when(backendService.getSession(any(PersistableSession.class), any(String.class))).thenReturn(null);
-        when(context.getApplicationEventListeners()).thenReturn(null);
+        when(context.getApplicationEventListeners()).thenReturn(new Object[]{sessionIdListener, sessionListener});
         instance.findSession(sessionId);
-
         verify(sessionListener, never()).sessionEvent(any(SessionEvent.class));
-        verify(sessionIdListener, never()).sessionIdChanged(any(HttpSessionEvent.class), any(String.class));
+    }
+
+    @Test
+    public void findSessionPropagatesBackendException() throws IOException {
+        String sessionId = "mySession.host1";
+        when(backendService.getSession(any(PersistableSession.class), any(String.class)))
+                .thenThrow(new RuntimeException("backend unavailable"));
+        try {
+            instance.findSession(sessionId);
+            assertThat("expected RuntimeException", false);
+        } catch (RuntimeException e) {
+            assertThat(e.getMessage(), is("backend unavailable"));
+        }
     }
 
     @Test
@@ -454,16 +456,11 @@ public class PersistableSessionManagerTest {
         ArrayList<String> backendIds = newArrayList("1", "2", "3");
         backendIds.forEach(id -> {
             //add them locally
-            StandardSession found = null;
-            try {
-                found = (StandardSession) instance.findSession(id);
-                found.setAttribute("marker", "bla");
-            } catch (IOException ex) {
-                //do nothing
-            }
+            StandardSession found = (StandardSession) instance.createSession(id + ".host");
+            found.setAttribute("marker", "bla");
         });
         //and one more
-        ((StandardSession) instance.findSession("4")).setAttribute("marker", "bla");
+        ((StandardSession) instance.createSession("4.host")).setAttribute("marker", "bla");
         List<String> localIds = backendIds.stream().map(id -> id + "." + engine.getJvmRoute()).collect(toList());
         List<String> localIdsOverlay = new ArrayList<>(localIds);
         localIdsOverlay.add("4." + engine.getJvmRoute());
@@ -487,16 +484,11 @@ public class PersistableSessionManagerTest {
         ArrayList<String> backendIds = newArrayList("1", "2", "3");
         backendIds.forEach(id -> {
             //add them locally
-            StandardSession found = null;
-            try {
-                found = (StandardSession) instance.findSession(id);
-                found.setAttribute("marker", "bla");
-            } catch (IOException ex) {
-                //do nothing
-            }
+            StandardSession found = (StandardSession) instance.createSession(id);
+            found.setAttribute("marker", "bla");
         });
         //and one more
-        ((StandardSession) instance.findSession("4")).setAttribute("marker", "bla");
+        ((StandardSession) instance.createSession("4")).setAttribute("marker", "bla");
         List<String> localIdsOverlay = new ArrayList<>(backendIds);
         localIdsOverlay.add("4");
         when(backendService.removeExpiredSessions()).thenReturn(backendIds);
@@ -519,19 +511,14 @@ public class PersistableSessionManagerTest {
         ArrayList<String> backendIds = newArrayList("1", "2", "3");
         backendIds.forEach(id -> {
             //add them locally
-            PersistableSession found;
+            PersistableSession found = (PersistableSession) instance.createSession(id + ".host");
             try {
-                found = (PersistableSession) instance.findSession(id);
-                try {
-                    setFieldValueForObject(found, "lastAccessedLocally", 1);
-                } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException ex) {
-                }
-                found.setAttribute("marker", "bla");
-                if ("3".equals(id)) {
-                    found.touchLastAccessedTime();
-                }
-            } catch (IOException ex) {
-                //do nothing
+                setFieldValueForObject(found, "lastAccessedLocally", 1);
+            } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException ex) {
+            }
+            found.setAttribute("marker", "bla");
+            if ("3".equals(id)) {
+                found.touchLastAccessedTime();
             }
         });
         List<String> localIds = backendIds.stream().map(id -> id + "." + engine.getJvmRoute()).collect(toList());
