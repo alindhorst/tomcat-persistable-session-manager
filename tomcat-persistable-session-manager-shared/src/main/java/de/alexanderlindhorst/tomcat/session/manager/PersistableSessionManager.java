@@ -6,6 +6,7 @@ package de.alexanderlindhorst.tomcat.session.manager;
 import de.alexanderlindhorst.tomcat.session.access.BackendService;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleState;
@@ -32,6 +33,7 @@ import static org.apache.catalina.Session.SESSION_DESTROYED_EVENT;
 public class PersistableSessionManager extends ManagerBase implements SessionListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("SessionManagement");
+    private final ConcurrentHashMap<String, Object> sessionLoadLocks = new ConcurrentHashMap<>();
     private BackendService backendService;
     private String serviceImplementationClassName;
     private String serviceBackendAddress;
@@ -134,20 +136,31 @@ public class PersistableSessionManager extends ManagerBase implements SessionLis
             }
             LOGGER.debug("session {} has no or not current jvm route, fetching from service for agnostic id {}", id,
                     jvmRouteAgnosticSessionId);
-            session = backendService.getSession(getSessionShell(), jvmRouteAgnosticSessionId);
-            if (session == null) {
-                LOGGER.warn("Creating a new session for passed in id {} as nothing could be found in the backend.\n"
-                        + "This might be an exploitation attempt.");
-                session = (PersistableSession) createSession(newId);
-            } else {
-                LOGGER.debug("session found, setting flags");
-                //reinitialize transient fields
-                session.setManager(this);
-                addSessionListenerUniquelyTo(session);
+            Object lock = sessionLoadLocks.computeIfAbsent(jvmRouteAgnosticSessionId, k -> new Object());
+            synchronized (lock) {
+                try {
+                    // Re-check: a concurrent thread may have already loaded and added this session.
+                    session = (PersistableSession) super.findSession(newId);
+                    if (session == null) {
+                        session = backendService.getSession(getSessionShell(), jvmRouteAgnosticSessionId);
+                        if (session == null) {
+                            LOGGER.warn("Creating a new session for passed in id {} as nothing could be found in the backend.\n"
+                                    + "This might be an exploitation attempt.");
+                            session = (PersistableSession) createSession(newId);
+                        } else {
+                            LOGGER.debug("session found, setting flags");
+                            //reinitialize transient fields
+                            session.setManager(this);
+                            addSessionListenerUniquelyTo(session);
 
-                LOGGER.debug("setting session id to new id {}", newId);
-                changeSessionId(session, newId);
-                add(session);
+                            LOGGER.debug("setting session id to new id {}", newId);
+                            changeSessionId(session, newId);
+                            add(session);
+                        }
+                    }
+                } finally {
+                    sessionLoadLocks.remove(jvmRouteAgnosticSessionId);
+                }
             }
         }
         if (session != null) {

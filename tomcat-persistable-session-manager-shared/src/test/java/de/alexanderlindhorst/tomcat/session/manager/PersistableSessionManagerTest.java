@@ -8,8 +8,11 @@ import de.alexanderlindhorst.tomcat.session.access.BackendService;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Engine;
@@ -223,6 +226,50 @@ public class PersistableSessionManagerTest {
         verify(sessionListener, never()).sessionEvent((SessionEvent) any());
         assertThat(session.getPersistenceKey(), is("mySession"));
         assertThat(session.getId(), is("mySession"));
+    }
+
+    @Test
+    public void findSessionQueriesBackendExactlyOnceForConcurrentRequestsWithSameId()
+            throws IOException, InterruptedException {
+        String sessionId = "shared.host2"; // different JVM route → needsRefresh = true
+        when(backendService.getSession(any(PersistableSession.class), eq("shared"))).thenAnswer(inv -> {
+            PersistableSession s = new PersistableSession(instance);
+            s.setId("shared");
+            s.setValid(true);
+            return s;
+        });
+
+        int threadCount = 10;
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threadCount);
+        List<Session> results = Collections.synchronizedList(new ArrayList<>());
+
+        for (int i = 0; i < threadCount; i++) {
+            new Thread(() -> {
+                try {
+                    start.await();
+                    Session s = instance.findSession(sessionId);
+                    if (s != null) {
+                        results.add(s);
+                    }
+                } catch (Exception e) {
+                    // ignore
+                } finally {
+                    done.countDown();
+                }
+            }).start();
+        }
+
+        start.countDown();
+        done.await(10, TimeUnit.SECONDS);
+
+        // All threads get a non-null session
+        assertThat(results.size(), is(threadCount));
+        // All threads get the identical session object — the map holds exactly one entry
+        Session first = results.get(0);
+        results.forEach(s -> assertThat(s, is(first)));
+        // Backend was queried exactly once despite 10 concurrent callers
+        verify(backendService, times(1)).getSession(any(PersistableSession.class), eq("shared"));
     }
 
     @Test(expected = IllegalArgumentException.class)
