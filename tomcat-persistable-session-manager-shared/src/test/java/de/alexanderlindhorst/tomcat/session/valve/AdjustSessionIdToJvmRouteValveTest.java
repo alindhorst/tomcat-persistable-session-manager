@@ -115,4 +115,22 @@ public class AdjustSessionIdToJvmRouteValveTest {
 
         verify(request).changeSessionId(newId);
     }
+
+    @Test
+    public void changeSessionIdIsCalledSoEncodeURLReflectsRewrittenJvmRouteSuffix() throws IOException, ServletException {
+        // When a request arrives with a session ID from a different JVM node (e.g. "sessionId.node2")
+        // and the manager rewrites it to the local JVM route (e.g. "sessionId.node1"), the valve
+        // must call request.changeSessionId() so that subsequent response.encodeURL() calls embed
+        // the updated ID rather than the stale one from the request.
+        String incomingId = "sessionId.node2";
+        String rewrittenId = "sessionId.node1";
+        when(context.getManager()).thenReturn(wellKnownManager);
+        when(request.getSession(false)).thenReturn(session);
+        when(request.getRequestedSessionId()).thenReturn(incomingId);
+        when(session.getId()).thenReturn(rewrittenId);
+
+        valve.invoke(request, response);
+
+        verify(request).changeSessionId(rewrittenId);
+    }
 }
