@@ -27,7 +27,9 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -108,15 +110,62 @@ public class MultipleEndpointBackendServiceTest {
     }
 
     @Test
-    public void getSessionInternalFetchesFromExactlyOneBackend() {
-        String id = "id";
-        InvocationCountingAnswer answer = new InvocationCountingAnswer();
-        when(backend1.getSession(any(PersistableSession.class), anyString())).thenAnswer(answer);
-        when(backend2.getSession(any(PersistableSession.class), anyString())).thenAnswer(answer);
+    public void getSessionReturnsNullForEmptyDelegateList() throws NoSuchFieldException, IllegalAccessException {
+        setFieldValueForObject(instance, "endpointDelegates", newArrayList());
+        assertThat(instance.getSession(session, "id"), is(nullValue()));
+    }
 
-        instance.getSession(session, id);
+    @Test
+    public void getSessionReturnsFirstNonNullResult() {
+        PersistableSession found = mock(PersistableSession.class);
+        when(backend1.getSession(any(PersistableSession.class), anyString())).thenReturn(null);
+        when(backend2.getSession(any(PersistableSession.class), anyString())).thenReturn(found);
 
-        assertThat(answer.getCounter(), is(1));
+        PersistableSession result = instance.getSession(session, "id");
+
+        assertThat(result, is(found));
+        verify(backend2).getSession(any(PersistableSession.class), anyString());
+    }
+
+    @Test
+    public void getSessionSkipsThrowingDelegateAndTriesNext() {
+        PersistableSession found = mock(PersistableSession.class);
+        when(backend1.getSession(any(PersistableSession.class), anyString()))
+                .thenThrow(new RuntimeException("transient failure"));
+        when(backend2.getSession(any(PersistableSession.class), anyString())).thenReturn(found);
+
+        PersistableSession result = instance.getSession(session, "id");
+
+        assertThat(result, is(found));
+    }
+
+    @Test
+    public void getSessionReturnsNullWhenAllDelegatesReturnNull() {
+        when(backend1.getSession(any(PersistableSession.class), anyString())).thenReturn(null);
+        when(backend2.getSession(any(PersistableSession.class), anyString())).thenReturn(null);
+
+        assertThat(instance.getSession(session, "id"), is(nullValue()));
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void getSessionRethrowsLastExceptionWhenAllDelegatesFail() {
+        when(backend1.getSession(any(PersistableSession.class), anyString()))
+                .thenThrow(new RuntimeException("failure 1"));
+        when(backend2.getSession(any(PersistableSession.class), anyString()))
+                .thenThrow(new RuntimeException("failure 2"));
+
+        instance.getSession(session, "id");
+    }
+
+    @Test
+    public void getSessionStopsAtFirstSuccessfulDelegate() {
+        PersistableSession found = mock(PersistableSession.class);
+        when(backend1.getSession(any(PersistableSession.class), anyString())).thenReturn(found);
+
+        PersistableSession result = instance.getSession(session, "id");
+
+        assertThat(result, is(found));
+        verify(backend2, never()).getSession(any(PersistableSession.class), anyString());
     }
 
     @Test

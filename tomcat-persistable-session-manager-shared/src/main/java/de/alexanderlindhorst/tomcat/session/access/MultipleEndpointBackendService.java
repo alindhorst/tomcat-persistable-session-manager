@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 
@@ -25,6 +26,7 @@ import static com.google.common.collect.Sets.newHashSet;
  */
 public class MultipleEndpointBackendService<TYPE extends BackendService> implements BackendService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MultipleEndpointBackendService.class);
     private List<TYPE> endpointDelegates;
     private Class<TYPE> type;
     private String backendAddress;
@@ -95,7 +97,22 @@ public class MultipleEndpointBackendService<TYPE extends BackendService> impleme
 
     @Override
     public PersistableSession getSession(PersistableSession emptyShell, String id) {
-        return endpointDelegates.stream().findAny().get().getSession(emptyShell, id);
+        RuntimeException lastException = null;
+        for (TYPE delegate : endpointDelegates) {
+            try {
+                PersistableSession session = delegate.getSession(emptyShell, id);
+                if (session != null) {
+                    return session;
+                }
+            } catch (RuntimeException e) {
+                LOGGER.warn("Delegate {} failed to retrieve session {}, trying next", delegate, id, e);
+                lastException = e;
+            }
+        }
+        if (lastException != null) {
+            throw lastException;
+        }
+        return null;
     }
 
     @Override
