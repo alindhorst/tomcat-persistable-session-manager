@@ -55,8 +55,9 @@ public class MultipleEndpointBackendService<TYPE extends BackendService> impleme
         splitValues.forEach(value -> {
             TYPE backendService = null;
             try {
-                backendService = type.newInstance();
-            } catch (IllegalAccessException | InstantiationException ex) {
+                backendService = type.getDeclaredConstructor().newInstance();
+            } catch (IllegalAccessException | InstantiationException | NoSuchMethodException
+                    | java.lang.reflect.InvocationTargetException ex) {
                 throw new IllegalStateException(ex);
             }
             backendService.setBackendAddress(value);
@@ -70,7 +71,11 @@ public class MultipleEndpointBackendService<TYPE extends BackendService> impleme
     @SuppressWarnings("unchecked")
     public void setBackendServiceType(String typeClassName) {
         try {
-            this.type = (Class<TYPE>) Class.forName(typeClassName);
+            Class<?> clazz = Class.forName(typeClassName);
+            if (!BackendService.class.isAssignableFrom(clazz)) {
+                throw new IllegalArgumentException(typeClassName + " does not implement BackendService");
+            }
+            this.type = (Class<TYPE>) clazz;
         } catch (ClassNotFoundException ex) {
             throw new IllegalArgumentException(ex);
         }

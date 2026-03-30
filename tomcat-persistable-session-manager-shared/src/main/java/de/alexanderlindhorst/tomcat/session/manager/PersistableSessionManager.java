@@ -68,12 +68,17 @@ public class PersistableSessionManager extends ManagerBase implements SessionLis
         LOGGER.debug("initInternal called");
         super.initInternal();
         try {
-            backendService = (BackendService) Class.forName(serviceImplementationClassName).newInstance();
+            Class<?> clazz = Class.forName(serviceImplementationClassName);
+            if (!BackendService.class.isAssignableFrom(clazz)) {
+                throw new LifecycleException(serviceImplementationClassName + " does not implement BackendService");
+            }
+            backendService = (BackendService) clazz.getDeclaredConstructor().newInstance();
             backendService.setBackendAddress(serviceBackendAddress);
             backendService.setSessionManagementLogger(LOGGER);
             backendService.setSessionExpiryThreshold(sessionExpiryThreshold);
             backendService.init();
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException ex) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+                | NoSuchMethodException | java.lang.reflect.InvocationTargetException ex) {
             throw new LifecycleException(ex);
         }
     }

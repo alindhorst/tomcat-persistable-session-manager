@@ -86,11 +86,9 @@ public class MultipleEndpointBackendServiceTest {
         instance.init();
     }
 
-    @Test(expected = IllegalStateException.class)
-    public void uninstantiableBackendTypeThrowsException() {
+    @Test(expected = IllegalArgumentException.class)
+    public void nonBackendServiceTypeThrowsException() {
         instance.setBackendServiceType("java.lang.Integer");
-        instance.setBackendAddress("something");
-        instance.init();
     }
 
     @Test
