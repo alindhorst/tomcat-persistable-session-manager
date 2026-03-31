@@ -6,8 +6,11 @@ package de.alexanderlindhorst.tomcat.session.manager;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.NotSerializableException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.Enumeration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,18 +45,44 @@ public final class PersistableSessionUtils {
         if (session == null) {
             return null;
         }
-        try {
-            byte[] bytes;
-            try (ByteArrayOutputStream out = new ByteArrayOutputStream(); ObjectOutputStream stream = new ObjectOutputStream(out)) {
-                session.writeObjectData(stream);
-                stream.flush();
-                bytes = out.toByteArray();
+        boolean retry;
+        do {
+            retry = false;
+            try {
+                byte[] bytes;
+                try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        ObjectOutputStream stream = new ObjectOutputStream(out)) {
+                    session.writeObjectData(stream);
+                    stream.flush();
+                    bytes = out.toByteArray();
+                }
+                return bytes;
+            } catch (NotSerializableException ex) {
+                retry = removeNonSerializableAttribute(session);
+                if (!retry) {
+                    LOGGER.error("Couldn't serialize session — non-serializable content cannot be identified: {}",
+                            ex.getMessage());
+                }
+            } catch (IOException ex) {
+                LOGGER.error("Couldn't serialize session, will return null value", ex);
             }
-            return bytes;
-        } catch (IOException ex) {
-            LOGGER.error("Couldn't serialize session, will return null value", ex);
-        }
+        } while (retry);
         return null;
+    }
+
+    private static boolean removeNonSerializableAttribute(PersistableSession session) {
+        Enumeration<String> names = session.getAttributeNames();
+        while (names.hasMoreElements()) {
+            String name = names.nextElement();
+            Object value = session.getAttribute(name);
+            if (value != null && !(value instanceof Serializable)) {
+                LOGGER.warn("Removing non-serializable session attribute '{}' of type {} to allow session persistence",
+                        name, value.getClass().getName());
+                session.removeAttribute(name);
+                return true;
+            }
+        }
+        return false;
     }
 
     public static PersistableSession deserializeSessionInto(PersistableSession emptyShell, byte[] bytes) {
